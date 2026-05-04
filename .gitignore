@@ -1,0 +1,29 @@
+﻿# Dependencies
+node_modules/
+
+# Environment - never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Next.js build output
+.next/
+out/
+
+# Supabase local metadata
+supabase/.temp/
+
+# Runtime databases
+database*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Generated/cache files
+tsconfig.tsbuildinfo
+.vercel/
+.claude/
+
+# Misc
+.DS_Store
+*.pem
+npm-debug.log*
