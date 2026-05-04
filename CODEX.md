@@ -24,7 +24,8 @@ Initial setup completed:
 - Installed dependencies with `npm install`.
 - Verified TypeScript with `tsc --noEmit --incremental false`.
 - Confirmed `npm audit` reports `0 vulnerabilities`.
-- Known inherited lint issue: `app/methodology/page.tsx:215` has `react/no-unescaped-entities` errors.
+- Fixed inherited lint issue in `app/methodology/page.tsx`.
+- Added Phase 2 candidate profile model and selector.
 
 Important current decision:
 
@@ -365,7 +366,7 @@ Status: Complete.
 
 Goal: make the copied app recognizably Career Radar while keeping the existing data pipeline unchanged.
 
-Status: In progress. App metadata, package name, global header, navigation labels, README, and several top-level page labels have been reframed for Career Radar. Data/API behavior remains unchanged.
+Status: Complete. App metadata, package name, global header, navigation labels, README, and several top-level page labels have been reframed for Career Radar. The inherited methodology lint issue was fixed. Data/API behavior remains unchanged.
 
 Scope:
 
@@ -388,6 +389,8 @@ Exit criteria:
 
 Goal: introduce candidate personalization without changing Supabase yet.
 
+Status: Complete. Candidate profiles are hardcoded in app code, selectable from the dashboard, persisted through the `profile` URL query param, and translated into profile-specific family/tag/score filters against the existing API routes.
+
 Scope:
 
 - Add TypeScript types for candidate profiles, candidate skills, preferences, target roles, and scoring weights.
@@ -402,8 +405,16 @@ Scope:
 Exit criteria:
 
 - User can select any of the three profiles.
-- The selected profile changes visible labels, KPIs, and ranking context.
+- The selected profile changes visible labels, KPI counts, and ranking context.
 - No Supabase schema changes required yet.
+
+Implementation notes:
+
+- Candidate profile types now live in `lib/types.ts`.
+- Demo profile definitions and profile-to-filter helpers live in `lib/candidateProfiles.ts`.
+- The selector UI lives in `components/CandidateProfileSelector.tsx`.
+- `app/page.tsx` applies selected profile filters to the existing `/api/signals` query layer.
+- `components/FilterSidebar.tsx` now accepts profile-specific default filters so reset actions keep the selected candidate lens.
 
 ### Phase 3 - Candidate Fit Scoring Layer
 
@@ -582,9 +593,9 @@ Exit criteria:
 
 Next recommended work when implementation begins:
 
-1. Phase 1: product reframe and local stability.
-2. Phase 2: hardcoded candidate profile model and selector.
-3. Phase 3: candidate fit scoring using existing Supabase data.
+1. Phase 3: candidate fit scoring using existing Supabase data.
+2. Phase 4: replace the inherited sales-leads table with candidate-centered recommendation surfaces.
+3. Phase 5: only then consider additive Supabase migrations for persisted candidate concepts.
 
 Do not start Supabase migrations or n8n workflow edits until the profile-aware UI proves the pivot.
 
@@ -595,9 +606,8 @@ In `career-radar`:
 - `npm install`: completed
 - `npm audit`: 0 vulnerabilities
 - `tsc --noEmit --incremental false`: passes
-- `npm run lint`: fails on inherited Methodology JSX escaping issue at `app/methodology/page.tsx:215`
-
-Build was not rerun after copying because env vars are not configured in the new folder yet.
+- `npm run lint`: passes
+- `npm run build`: passes
 
 To run locally, create `C:\Users\chase\Documents\career-radar\.env.local` with:
 

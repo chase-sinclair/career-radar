@@ -62,6 +62,18 @@ input[type="range"]::-webkit-slider-thumb {
   gap: 16px;
 }
 
+.candidate-selector-grid {
+  grid-template-columns: minmax(220px, 1.1fr) minmax(280px, 2fr);
+}
+
+.profile-card-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.profile-context-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
 /* Sidebar filter toggle — only shown on mobile */
 .sidebar-toggle {
   display: none;
@@ -103,6 +115,15 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 @media (max-width: 768px) {
+  .candidate-selector-grid,
+  .profile-context-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .profile-card-grid {
+    grid-template-columns: 1fr !important;
+  }
+
   .kpi-grid {
     flex-wrap: wrap;
   }

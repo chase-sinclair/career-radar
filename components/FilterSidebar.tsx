@@ -23,12 +23,14 @@ export const DEFAULT_FILTERS: DashboardFilters = {
 interface Props {
   filters: DashboardFilters;
   onChange: (f: DashboardFilters) => void;
+  defaultFilters?: DashboardFilters;
   availableTags: string[];
   // Current signals — used to compute how many results each filter option yields
   signals: JobSignal[];
 }
 
-export default function FilterSidebar({ filters, onChange, availableTags, signals }: Props) {
+export default function FilterSidebar({ filters, onChange, defaultFilters, availableTags, signals }: Props) {
+  const resetFilters = defaultFilters ?? DEFAULT_FILTERS;
   // Compute how many of the currently-loaded signals have each family or tag.
   // This gives the user context: "given your other filters, N results also match this."
   const familyCounts = Object.fromEntries(
@@ -42,6 +44,10 @@ export default function FilterSidebar({ filters, onChange, availableTags, signal
   // Tech stack pill filter — narrows the visible tag list without affecting active selections
   const [tagSearch, setTagSearch] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setLocalSearch(filters.search);
+  }, [filters.search]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -70,8 +76,8 @@ export default function FilterSidebar({ filters, onChange, availableTags, signal
   }
 
   function reset() {
-    setLocalSearch('');
-    onChange(DEFAULT_FILTERS);
+    setLocalSearch(resetFilters.search);
+    onChange(resetFilters);
   }
 
   // Count how many filter dimensions are non-default so we can badge the header

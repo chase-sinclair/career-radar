@@ -84,3 +84,45 @@ export interface KpiData {
   avg_intent_score: number;
   companies_tracked: number;
 }
+
+// Candidate profile types
+export type CandidateProfileId =
+  | 'chase-ai-workflow'
+  | 'finance-transformation'
+  | 'sales-gtm';
+
+export type CandidateSkillType = 'strength' | 'target' | 'gap';
+
+export interface CandidateSkill {
+  name: string;
+  type: CandidateSkillType;
+}
+
+export interface CandidatePreferences {
+  target_roles: string[];
+  desired_direction: string[];
+  target_job_families: JobFamily[];
+  priority_tags: string[];
+  search_keywords: string[];
+}
+
+export interface CandidateScoringWeights {
+  role_alignment: number;
+  current_skill_overlap: number;
+  growth_alignment: number;
+  seniority_fit: number;
+  recency: number;
+}
+
+export interface CandidateProfile {
+  id: CandidateProfileId;
+  name: string;
+  short_label: string;
+  headline: string;
+  summary: string;
+  skills: CandidateSkill[];
+  preferences: CandidatePreferences;
+  scoring_weights: CandidateScoringWeights;
+  default_min_intent_score: number;
+  default_hot_leads_only: boolean;
+}

@@ -1,12 +1,21 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { DashboardFilters, JobSignal } from '@/lib/types';
+import type { CandidateProfileId, DashboardFilters, JobSignal } from '@/lib/types';
+import {
+  buildCandidateProfileFilters,
+  CANDIDATE_PROFILES,
+  DEFAULT_CANDIDATE_PROFILE_ID,
+  getCandidateProfile,
+  getMatchingProfileTags,
+  resolveCandidateProfileId,
+} from '@/lib/candidateProfiles';
 import { mean } from '@/lib/utils';
-import FilterSidebar, { DEFAULT_FILTERS } from '@/components/FilterSidebar';
+import FilterSidebar from '@/components/FilterSidebar';
 import LeadsTable from '@/components/LeadsTable';
 import TrendChart from '@/components/TrendChart';
 import KpiCard from '@/components/KpiCard';
+import CandidateProfileSelector from '@/components/CandidateProfileSelector';
 
 // ── Query string builder ──────────────────────────────────────────────────────
 function buildQueryString(filters: DashboardFilters): string {
@@ -113,21 +122,56 @@ const IconCompanies = () => (
   </svg>
 );
 
+function readProfileIdFromUrl(): CandidateProfileId {
+  if (typeof window === 'undefined') return DEFAULT_CANDIDATE_PROFILE_ID;
+  const params = new URLSearchParams(window.location.search);
+  return resolveCandidateProfileId(params.get('profile'));
+}
+
+function writeProfileIdToUrl(profileId: CandidateProfileId) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('profile', profileId);
+  window.history.replaceState(null, '', `${url.pathname}?${url.searchParams.toString()}`);
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const [filters, setFilters] = useState<DashboardFilters>(DEFAULT_FILTERS);
+  const [profileId, setProfileId] = useState<CandidateProfileId>(DEFAULT_CANDIDATE_PROFILE_ID);
+  const selectedProfile = useMemo(() => getCandidateProfile(profileId), [profileId]);
+  const [filters, setFilters] = useState<DashboardFilters>(() =>
+    buildCandidateProfileFilters(getCandidateProfile(DEFAULT_CANDIDATE_PROFILE_ID), [])
+  );
   const [signals, setSignals] = useState<JobSignal[]>([]);
-  // Global hot-lead count from DB — stays constant regardless of active filters
-  const [globalHotLeads, setGlobalHotLeads] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   // Sidebar closed by default on mobile; open on desktop
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const profileDefaultFilters = useMemo(
+    () => buildCandidateProfileFilters(selectedProfile, availableTags),
+    [selectedProfile, availableTags]
+  );
 
   // Detect mobile on mount and close sidebar by default
   useEffect(() => {
     if (window.innerWidth < 768) setSidebarOpen(false);
+  }, []);
+
+  useEffect(() => {
+    const syncProfileFromUrl = () => {
+      const nextProfileId = readProfileIdFromUrl();
+      const params = new URLSearchParams(window.location.search);
+      const search = params.get('search')?.trim() ?? '';
+
+      setProfileId(nextProfileId);
+      if (search) {
+        setFilters((current) => ({ ...current, search }));
+      }
+    };
+
+    syncProfileFromUrl();
+    window.addEventListener('popstate', syncProfileFromUrl);
+    return () => window.removeEventListener('popstate', syncProfileFromUrl);
   }, []);
 
   // Fetch distinct tags once on mount — not filter-dependent
@@ -137,6 +181,12 @@ export default function DashboardPage() {
       .then((d: { tags?: string[] }) => setAvailableTags(d.tags ?? []))
       .catch((err) => console.error('Failed to fetch tags:', err));
   }, []);
+
+  useEffect(() => {
+    setFilters((current) =>
+      ({ ...profileDefaultFilters, search: current.search })
+    );
+  }, [profileDefaultFilters]);
 
   // Fetch signals whenever filters change
   const fetchSignals = useCallback(async (f: DashboardFilters) => {
@@ -148,9 +198,6 @@ export default function DashboardPage() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as { signals: JobSignal[]; count: number; hot_leads_total: number };
       setSignals(data.signals ?? []);
-      // hot_leads_total is a separate DB count query unaffected by filters —
-      // always reflects the true global hot-lead count.
-      setGlobalHotLeads(data.hot_leads_total ?? 0);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       console.error('Failed to fetch signals:', msg);
@@ -165,17 +212,25 @@ export default function DashboardPage() {
     fetchSignals(filters);
   }, [filters, fetchSignals]);
 
+  const matchedProfileTags = useMemo(
+    () => getMatchingProfileTags(selectedProfile, availableTags),
+    [selectedProfile, availableTags]
+  );
+
+  const handleProfileChange = useCallback((nextProfileId: CandidateProfileId) => {
+    setProfileId(nextProfileId);
+    writeProfileIdToUrl(nextProfileId);
+  }, []);
+
   // ── KPI values (computed client-side, no extra fetch) ──────────────────────
   const kpi = useMemo(() => ({
     total:        signals.length,
-    // Use global DB count so this KPI doesn't fluctuate when filters are applied.
-    // Keep this inherited urgency count stable regardless of the active filters.
-    hotLeads:     globalHotLeads ?? signals.filter((s) => s.is_hot_lead).length,
+    hotLeads:     signals.filter((s) => s.is_hot_lead).length,
     avgScore:     mean(signals.map((s) => s.computed_score ?? s.intent_score)),
     companies:    new Set(signals.map((s) => s.company_name)).size,
     // Most-recent created_at — signals are already ordered DESC from the API
     lastRefreshed: signals[0]?.created_at ?? null,
-  }), [signals, globalHotLeads]);
+  }), [signals]);
 
   // ── TrendChart data ────────────────────────────────────────────────────────
   const trendData = useMemo(() => {
@@ -189,7 +244,7 @@ export default function DashboardPage() {
   }, [signals]);
 
   function handleReset() {
-    setFilters(DEFAULT_FILTERS);
+    setFilters(profileDefaultFilters);
   }
 
   return (
@@ -226,6 +281,7 @@ export default function DashboardPage() {
               // Auto-close sidebar on mobile after a filter change
               if (window.innerWidth < 768) setSidebarOpen(false);
             }}
+            defaultFilters={profileDefaultFilters}
             availableTags={availableTags}
             signals={signals}
           />
@@ -260,16 +316,23 @@ export default function DashboardPage() {
           </button>
         </div>
 
+        <CandidateProfileSelector
+          profiles={CANDIDATE_PROFILES}
+          selectedProfile={selectedProfile}
+          matchedTags={matchedProfileTags}
+          onSelect={handleProfileChange}
+        />
+
         {/* KPI row — 4-across desktop, 2×2 mobile */}
         <div className="kpi-grid" style={{ flexShrink: 0 }}>
           {loading ? (
             <KpiSkeleton />
           ) : (
             <>
-              <KpiCard label="Market Signals"   value={kpi.total}               icon={<IconSignals />}   delay={0}   />
-              <KpiCard label="High-Urgency Roles" value={kpi.hotLeads}          icon={<IconHot />}       delay={100} subtitle="legacy signal score >= 9" />
-              <KpiCard label="Avg Signal Score" value={kpi.avgScore.toFixed(1)} icon={<IconScore />}     delay={200} />
-              <KpiCard label="Companies"        value={kpi.companies}           icon={<IconCompanies />} delay={300} />
+              <KpiCard label="Profile Matches" value={kpi.total}               icon={<IconSignals />}   delay={0} subtitle={selectedProfile.short_label} />
+              <KpiCard label="High-Urgency Jobs" value={kpi.hotLeads}          icon={<IconHot />}       delay={100} subtitle="within this profile lens" />
+              <KpiCard label="Avg Market Score" value={kpi.avgScore.toFixed(1)} icon={<IconScore />}     delay={200} />
+              <KpiCard label="Relevant Companies" value={kpi.companies}           icon={<IconCompanies />} delay={300} />
             </>
           )}
         </div>
