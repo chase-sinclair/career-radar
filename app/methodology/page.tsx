@@ -212,7 +212,7 @@ export default function MethodologyPage() {
           How SignalPulse Works
         </h1>
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7, maxWidth: 640 }}>
-          SignalPulse identifies "buying windows" — moments when a company's hiring activity
+          SignalPulse identifies &quot;buying windows&quot; — moments when a company&apos;s hiring activity
           signals they are actively purchasing or implementing new software. This page explains the
           pipeline architecture and the scoring logic behind every intent score you see.
         </p>
