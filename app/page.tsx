@@ -169,7 +169,7 @@ export default function DashboardPage() {
   const kpi = useMemo(() => ({
     total:        signals.length,
     // Use global DB count so this KPI doesn't fluctuate when filters are applied.
-    // A sales manager expects "Hot Leads" to be a stable baseline, not a filtered subset.
+    // Keep this inherited urgency count stable regardless of the active filters.
     hotLeads:     globalHotLeads ?? signals.filter((s) => s.is_hot_lead).length,
     avgScore:     mean(signals.map((s) => s.computed_score ?? s.intent_score)),
     companies:    new Set(signals.map((s) => s.company_name)).size,
@@ -266,9 +266,9 @@ export default function DashboardPage() {
             <KpiSkeleton />
           ) : (
             <>
-              <KpiCard label="Total Signals"    value={kpi.total}               icon={<IconSignals />}   delay={0}   />
-              <KpiCard label="Hot Leads"        value={kpi.hotLeads}            icon={<IconHot />}       delay={100} subtitle="intent score ≥ 9" />
-              <KpiCard label="Avg Intent Score" value={kpi.avgScore.toFixed(1)} icon={<IconScore />}     delay={200} />
+              <KpiCard label="Market Signals"   value={kpi.total}               icon={<IconSignals />}   delay={0}   />
+              <KpiCard label="High-Urgency Roles" value={kpi.hotLeads}          icon={<IconHot />}       delay={100} subtitle="legacy signal score >= 9" />
+              <KpiCard label="Avg Signal Score" value={kpi.avgScore.toFixed(1)} icon={<IconScore />}     delay={200} />
               <KpiCard label="Companies"        value={kpi.companies}           icon={<IconCompanies />} delay={300} />
             </>
           )}

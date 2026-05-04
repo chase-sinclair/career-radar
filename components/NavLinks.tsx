@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const LINKS = [
-  { href: '/',              label: 'Leads'        },
-  { href: '/companies',     label: 'Companies'    },
-  { href: '/intelligence',  label: 'Intelligence' },
+  { href: '/',              label: 'Briefing'      },
+  { href: '/companies',     label: 'Company Radar' },
+  { href: '/intelligence',  label: 'Skill Radar'   },
   { href: '/methodology',   label: 'Methodology'  },
 ];
 

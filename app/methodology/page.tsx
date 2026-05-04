@@ -209,12 +209,12 @@ export default function MethodologyPage() {
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div>
         <h1 style={{ fontSize: 22, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
-          How SignalPulse Works
+          How Career Radar Works
         </h1>
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7, maxWidth: 640 }}>
-          SignalPulse identifies &quot;buying windows&quot; — moments when a company&apos;s hiring activity
-          signals they are actively purchasing or implementing new software. This page explains the
-          pipeline architecture and the scoring logic behind every intent score you see.
+          Career Radar monitors live job postings and turns hiring patterns into candidate-specific
+          market intelligence. This page explains the inherited pipeline, the current signal scoring,
+          and the personalization layer we are building on top.
         </p>
       </div>
 

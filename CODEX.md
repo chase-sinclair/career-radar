@@ -359,11 +359,13 @@ Exit criteria:
 - TypeScript passes.
 - Known copied issues are documented.
 
-Status: Mostly complete.
+Status: Complete.
 
 ### Phase 1 - Product Reframe And Local Stability
 
 Goal: make the copied app recognizably Career Radar while keeping the existing data pipeline unchanged.
+
+Status: In progress. App metadata, package name, global header, navigation labels, README, and several top-level page labels have been reframed for Career Radar. Data/API behavior remains unchanged.
 
 Scope:
 

@@ -99,10 +99,10 @@ export default async function CompaniesPage() {
             marginBottom: 4,
           }}
         >
-          Company Trends
+          Company Radar
         </h1>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-          Weekly signal velocity — sorted by acceleration (most active first).
+          Hiring signal velocity - sorted by acceleration for profile-aware career targeting.
           Snapshots refresh every Sunday at 23:00.
         </p>
       </div>
@@ -146,4 +146,3 @@ export default async function CompaniesPage() {
     </main>
   );
 }
-

@@ -20,9 +20,9 @@ const dmMono = DM_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'SignalPulse AI — B2B Sales Intelligence',
+  title: 'Career Radar - Personalized Job Market Intelligence',
   description:
-    'Monitor job postings to identify buying windows — moments when hiring patterns signal a company is about to invest in new software.',
+    'Monitor live hiring signals and translate them into candidate-specific job matches, skill gaps, and career strategy.',
 };
 
 export default function RootLayout({
@@ -34,7 +34,6 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${dmMono.variable} h-full antialiased`}
     >
       <body style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        {/* ── Global header ────────────────────────────────────────────── */}
         <header
           style={{
             background: 'var(--bg-surface)',
@@ -50,9 +49,7 @@ export default function RootLayout({
             zIndex: 40,
           }}
         >
-          {/* Logo + title */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {/* Pulse icon */}
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
               <rect width="22" height="22" rx="6" fill="#6366f1" fillOpacity="0.15"/>
               <polyline
@@ -74,19 +71,17 @@ export default function RootLayout({
                   letterSpacing: '-0.02em',
                 }}
               >
-                SignalPulse AI
+                Career Radar
               </span>
               <span className="header-subtitle" style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                B2B Sales Intelligence
+                Job Market Intelligence
               </span>
             </div>
           </div>
 
-          {/* Nav */}
           <NavLinks />
         </header>
 
-        {/* ── Page content ─────────────────────────────────────────────── */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {children}
         </div>

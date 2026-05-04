@@ -464,10 +464,10 @@ export default function IntelligencePage() {
               marginBottom: 4,
             }}
           >
-            Market Intelligence
+            Skill Radar
           </h1>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-            Aggregate view of hiring signals across all tracked companies and tool categories.
+            Aggregate view of hiring demand across tracked companies, role families, and tool categories.
           </p>
         </div>
 
@@ -501,7 +501,7 @@ export default function IntelligencePage() {
           ) : (
             <>
               <KpiCard
-                label="Total Signals"
+                label="Market Signals"
                 value={kpi?.totalSignals ?? 0}
                 icon={<IconSignals />}
                 delay={0}

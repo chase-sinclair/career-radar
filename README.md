@@ -1,140 +1,183 @@
-# **Live demo:** https://signalpulse-six.vercel.app
+# Career Radar
 
-# SignalPulse AI — B2B Sales Intelligence Engine
+Career Radar is a personalized job-market intelligence dashboard built from the SignalPulse data pipeline.
 
-> SignalPulse AI monitors corporate job postings daily and uses AI to identify "buying window" signals — moments when a company's hiring patterns reveal they are about to invest in new software. A company posting "NetSuite Implementation Manager" is telling Ramp, Brex, and Stripe: come talk to us now. Built as a full-stack data engineering portfolio project: automated ingestion via n8n, structured enrichment via GPT-4o-mini, PostgreSQL storage in Supabase, and a production-grade Next.js 16 dashboard.
+It monitors live job postings, enriches them with AI, stores structured hiring signals in Supabase, and turns the market into candidate-specific recommendations: best-fit jobs, skill gaps, company momentum, positioning advice, and portfolio ideas.
 
----
+The first version reuses the existing SignalPulse infrastructure while reframing the product around candidates instead of sales teams.
 
-## What it does
+## Product Direction
 
-Every morning at 6 AM, an n8n workflow fires three targeted Google Jobs queries via SerpApi, runs each result through a GPT-4o-mini prompt that extracts job family, tech stack mentions, a 1–10 intent score, and a cold-email hook, then upserts everything into Supabase. The Next.js dashboard gives a sales team a live view of who is hiring, what tools they're adopting, and how hot each lead is — updated daily without manual effort.
+Career Radar answers a more direct question than the original project:
 
-**Example signal:** A mid-sized manufacturing company posts "ERP Implementation Manager (NetSuite)." SignalPulse scores this a 10/10, marks it a hot lead, and generates a sales hook: *"Your search for a NetSuite Implementation Manager signals a major finance transformation — the right spend management platform could save your team 20+ hours a week."*
+> Given a candidate's skills, goals, and target roles, what is the market telling them to do next?
 
----
+The dashboard will eventually support:
 
-## Stack
+- selectable demo candidate profiles
+- profile-aware job ranking
+- skill demand and gap analysis
+- company hiring radar
+- candidate positioning strategy
+- suggested portfolio projects based on market gaps
+- guided onboarding that creates a custom candidate profile
 
-| Layer | Technology | Why |
-|---|---|---|
-| **Frontend** | Next.js 16 (App Router) | Server components + API routes in one repo; signals React fluency to recruiters |
-| **Database** | Supabase (PostgreSQL) | Schema with indexes, views, stored procedures, and FK relationships — not just CRUD |
-| **Automation** | n8n (self-hosted via Docker) | Visual workflow builder; the learning goal for this project |
-| **AI Enrichment** | OpenAI GPT-4o-mini | Cheapest capable model for structured JSON extraction |
-| **Job Data** | SerpApi (Google Jobs) | Per-search pricing — entire ingestion layer runs on the free tier at MVP scale |
-| **Deployment** | Vercel + DigitalOcean | Next.js on Vercel; n8n on a $6/mo Droplet via Docker Compose |
+Initial demo profiles:
 
----
+- Chase / AI Workflow Builder
+- Finance Transformation Candidate
+- Sales / GTM Candidate
+
+## Current State
+
+This repo is a clean project fork of the original SignalPulse app.
+
+Completed setup:
+
+- copied the useful Next.js, Supabase, n8n, and Docker assets
+- excluded local env files, build output, SQLite runtime DBs, Vercel state, and agent settings
+- initialized a separate GitHub repo
+- created a separate Vercel project named `career-radar`
+- added `CODEX.md` as the active project memory and roadmap
+- added safe env templates
+
+The app still contains inherited SignalPulse screens and data concepts. Phase 1 is focused on product reframe and local stability before deeper candidate-fit logic.
 
 ## Architecture
 
-```
-SerpApi (Google Jobs)
-       │  3 queries/day via n8n schedule
-       ▼
-  n8n Workflow (16 nodes)
-  ├─ Smart filter: drops recruiters + stale postings before AI
-  ├─ Batch of 5 → GPT-4o-mini (structured JSON)
-  ├─ Validation: type-checks every AI field before DB write
-  └─ Upsert → Supabase (companies → job_signals → signal_tags)
-       │
-       ▼
-  Supabase (PostgreSQL)
-  ├─ signals_with_tags view: aggregates tags as array per signal
-  └─ refresh_weekly_snapshots(): stored proc, called every Sunday
-       │
-       ▼
-  Next.js Dashboard
-  ├─ /api/signals  — filtered, server-side query via Supabase SSR client
-  ├─ /api/tags     — distinct tags from signal_tags for sidebar
-  ├─ /            — KPI row + filter sidebar + leads table + trend chart
-  └─ /companies   — weekly delta cards sorted by signal velocity
+```text
+SerpApi Google Jobs
+       |
+       v
+n8n scheduled workflows
+       |
+       v
+OpenAI enrichment
+       |
+       v
+Supabase Postgres
+       |
+       v
+Next.js dashboard
+       |
+       v
+Candidate-specific market intelligence
 ```
 
----
+Main stack:
 
-## Technical highlights
+- Next.js 16 App Router
+- React 19
+- Supabase Postgres
+- n8n
+- OpenAI GPT-4o-mini
+- SerpApi Google Jobs
+- Recharts
+- Vercel
 
-**Supabase:** The schema goes beyond basic CRUD. `signal_tags` is a proper junction table (not a TEXT array) enabling indexed tag queries. `signals_with_tags` is a PostgreSQL view that re-aggregates tags per signal using `array_agg`. `refresh_weekly_snapshots()` is a stored procedure called by n8n via Supabase RPC — computes weekly signal counts, avg intent scores, and dominant job family per company, upserted in one transaction.
+## Supabase
 
-**n8n workflow (16 nodes):** The pipeline has a pre-AI filter stage that drops recruiter postings and stale results before a single OpenAI token is spent, keeping costs at $0 on the free tier. Results are batched in groups of 5 to respect rate limits. A validation node type-checks every AI-generated field and sanitizes `intent_score` to the 1–10 range before writing to Postgres. A bridge node re-fetches the Supabase-assigned UUID after upsert to correctly populate `company_id` on each signal.
+Career Radar currently reuses the existing Supabase project and historical job data.
 
-**Next.js 16:** The API route at `/api/signals` uses the `@supabase/ssr` server client (async `cookies()` pattern for Next.js 15+). All filtering — job family, intent score, tech stack tags, hot-lead flag, company search — happens server-side. Client-side tag filtering is the only post-processing step, bounded to 200 rows. KPI values and trend chart data are computed client-side from the fetched array — zero extra network requests.
+Existing source objects:
 
-**SerpApi credit budget:** Three queries per day = 90 credits/month. Free tier is 100 credits/month. The entire ingestion layer runs at $0/month at MVP scale.
+- `companies`
+- `job_signals`
+- `signal_tags`
+- `weekly_snapshots`
+- `signals_with_tags`
+- `refresh_weekly_snapshots()`
 
----
+Important rule:
 
-## Local setup
+> Database changes must be additive and backward-compatible until the original SignalPulse app is retired.
 
-```bash
-# 1. Clone and install
-git clone https://github.com/YOUR_USERNAME/signalpulse.git
-cd signalpulse
+Planned future objects may include:
+
+- `candidate_profiles`
+- `candidate_profile_skills`
+- `candidate_preferences`
+- `candidate_job_matches`
+- `career_insights`
+
+## n8n Workflows
+
+Workflow exports are committed in:
+
+- `n8n/signalpulse_daily.json`
+- `n8n/signalpulse_snapshots.json`
+
+Current workflows are still the inherited SignalPulse ingestion jobs. They remain useful as the base data pipeline, but the prompt and search strategy will later be reframed around career-market intelligence.
+
+Known workflow issue to fix later:
+
+- the company insert SQL interpolates `company_name` directly and should be converted to parameter binding.
+
+## Local Setup
+
+Install dependencies:
+
+```powershell
 npm install
+```
 
-# 2. Environment variables
-cp .env.local.example .env.local
-# Fill in: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+Create local env files:
 
-# 3. Run the dev server
+```powershell
+Copy-Item .env.local.example .env.local
+Copy-Item .env.example .env
+```
+
+For the Next.js app, fill in `.env.local`:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+```
+
+The broader `.env` is for future local pipeline or n8n-style tooling. It can stay as placeholders until that work begins.
+
+Run locally:
+
+```powershell
 npm run dev
-# → http://localhost:3000
 ```
 
-The dashboard works immediately against the live Supabase instance. No local database needed.
+Validate:
 
----
-
-## n8n deployment (DigitalOcean)
-
-```bash
-# On a fresh Ubuntu 22.04 Droplet ($6/mo)
-bash docker/setup.sh
+```powershell
+npm run lint
+npm run build
 ```
 
-The script installs Docker, clones the repo, prompts for secrets, and starts n8n via Docker Compose. Once running, import `n8n/signalpulse_daily.json` and `n8n/signalpulse_snapshots.json` from the n8n UI, activate both, and the pipeline runs itself.
+## Deployment
 
----
+Vercel project:
 
-## Vercel deployment
+- project name: `career-radar`
+- project id: `prj_qkGy0EPDnsYeKKNBstVEJnMn9JK9`
 
-1. Push to GitHub
-2. Import the repo in [vercel.com](https://vercel.com)
-3. Add environment variables in the Vercel dashboard:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY` ← server-only, never public
-4. Deploy
+Required Vercel env vars:
 
----
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
 
-## Database schema (key objects)
+The original SignalPulse deployment should remain untouched until an intentional cutover.
 
-| Object | Type | Purpose |
-|---|---|---|
-| `companies` | Table | One row per tracked company |
-| `job_signals` | Table | One row per job posting (deduped on `external_job_id`) |
-| `signal_tags` | Table | Junction table — one row per (signal, tool) pair |
-| `weekly_snapshots` | Table | Aggregated weekly stats per company |
-| `signals_with_tags` | View | Re-aggregates tags as array; queried by the API route |
-| `refresh_weekly_snapshots` | Function | Stored proc called by n8n RPC every Sunday |
+## Roadmap
 
----
+See `CODEX.md` for the active implementation plan.
 
-## Project status
+Immediate order:
 
-| Phase | Status |
-|---|---|
-| Supabase schema + seed | ✅ |
-| n8n daily scraper (16 nodes) | ✅ |
-| n8n weekly snapshots | ✅ |
-| Next.js API routes | ✅ |
-| Dashboard UI | ✅ |
-| DigitalOcean n8n deployment | 🔧 In progress |
-| Vercel deployment | 🔧 In progress |
-
----
-
-*Built by a solo developer learning n8n and Supabase. Target audience: hiring teams at Ramp, Stripe, Brex, Snowflake, and AWS.*
+1. Product reframe and local stability
+2. Hardcoded candidate profile model and selector
+3. Candidate fit scoring using existing Supabase data
+4. Career dashboard UX
+5. Additive Supabase migrations
+6. Pipeline reframe
+7. Personalized onboarding
+8. Deployment/cutover
+9. Demo polish and portfolio story
