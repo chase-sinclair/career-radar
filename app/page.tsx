@@ -18,14 +18,27 @@ import KpiCard from '@/components/KpiCard';
 import CandidateProfileSelector from '@/components/CandidateProfileSelector';
 
 // ── Query string builder ──────────────────────────────────────────────────────
-function buildQueryString(filters: DashboardFilters): string {
+function buildQueryString(filters: DashboardFilters, profileId: CandidateProfileId): string {
   const params = new URLSearchParams();
+  params.set('profile', profileId);
   params.set('min_score', String(filters.min_intent_score));
   if (filters.hot_leads_only) params.set('hot', 'true');
   if (filters.search) params.set('search', filters.search);
   filters.job_families.forEach((f) => params.append('family', f));
   filters.tags.forEach((t) => params.append('tag', t));
   return params.toString();
+}
+
+function mostCommonLabel(values: string[]): string {
+  if (values.length === 0) return 'None';
+
+  const counts = values.reduce<Record<string, number>>((acc, value) => {
+    acc[value] = (acc[value] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'None';
 }
 
 // ── KPI skeleton ──────────────────────────────────────────────────────────────
@@ -189,11 +202,11 @@ export default function DashboardPage() {
   }, [profileDefaultFilters]);
 
   // Fetch signals whenever filters change
-  const fetchSignals = useCallback(async (f: DashboardFilters) => {
+  const fetchSignals = useCallback(async (f: DashboardFilters, activeProfileId: CandidateProfileId) => {
     setLoading(true);
     setFetchError(null);
     try {
-      const qs = buildQueryString(f);
+      const qs = buildQueryString(f, activeProfileId);
       const res = await fetch(`/api/signals?${qs}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as { signals: JobSignal[]; count: number; hot_leads_total: number };
@@ -209,8 +222,8 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    fetchSignals(filters);
-  }, [filters, fetchSignals]);
+    fetchSignals(filters, profileId);
+  }, [filters, fetchSignals, profileId]);
 
   const matchedProfileTags = useMemo(
     () => getMatchingProfileTags(selectedProfile, availableTags),
@@ -224,12 +237,15 @@ export default function DashboardPage() {
 
   // ── KPI values (computed client-side, no extra fetch) ──────────────────────
   const kpi = useMemo(() => ({
-    total:        signals.length,
-    hotLeads:     signals.filter((s) => s.is_hot_lead).length,
-    avgScore:     mean(signals.map((s) => s.computed_score ?? s.intent_score)),
+    highFitJobs:  signals.filter((s) => (s.fit_score ?? 0) >= 8).length,
+    avgFitScore:  mean(signals.map((s) => s.fit_score ?? 0)),
+    topMissingSkill: mostCommonLabel(signals.flatMap((s) => s.missing_skills ?? [])),
     companies:    new Set(signals.map((s) => s.company_name)).size,
     // Most-recent created_at — signals are already ordered DESC from the API
-    lastRefreshed: signals[0]?.created_at ?? null,
+    lastRefreshed:
+      signals.length > 0
+        ? [...signals].sort((a, b) => b.created_at.localeCompare(a.created_at))[0]?.created_at ?? null
+        : null,
   }), [signals]);
 
   // ── TrendChart data ────────────────────────────────────────────────────────
@@ -329,10 +345,10 @@ export default function DashboardPage() {
             <KpiSkeleton />
           ) : (
             <>
-              <KpiCard label="Profile Matches" value={kpi.total}               icon={<IconSignals />}   delay={0} subtitle={selectedProfile.short_label} />
-              <KpiCard label="High-Urgency Jobs" value={kpi.hotLeads}          icon={<IconHot />}       delay={100} subtitle="within this profile lens" />
-              <KpiCard label="Avg Market Score" value={kpi.avgScore.toFixed(1)} icon={<IconScore />}     delay={200} />
-              <KpiCard label="Relevant Companies" value={kpi.companies}           icon={<IconCompanies />} delay={300} />
+              <KpiCard label="High-Fit Jobs" value={kpi.highFitJobs}               icon={<IconSignals />}   delay={0} subtitle={selectedProfile.short_label} />
+              <KpiCard label="Avg Fit Score" value={kpi.avgFitScore.toFixed(1)}    icon={<IconHot />}       delay={100} subtitle="candidate-specific ranking" />
+              <KpiCard label="Top Missing Skill" value={kpi.topMissingSkill}       icon={<IconScore />}     delay={200} />
+              <KpiCard label="Relevant Companies" value={kpi.companies}            icon={<IconCompanies />} delay={300} />
             </>
           )}
         </div>
@@ -368,13 +384,18 @@ export default function DashboardPage() {
 
         {/* Error banner */}
         {fetchError && (
-          <ErrorBanner message={fetchError} onRetry={() => fetchSignals(filters)} />
+          <ErrorBanner message={fetchError} onRetry={() => fetchSignals(filters, profileId)} />
         )}
 
         {/* Leads table — flexShrink:0 prevents the flex parent from squishing
             the table to fit the chart; main scrolls instead */}
         <div style={{ flexShrink: 0 }}>
-          <LeadsTable signals={signals} loading={loading} onReset={handleReset} />
+          <LeadsTable
+            signals={signals}
+            loading={loading}
+            onReset={handleReset}
+            profileLabel={selectedProfile.short_label}
+          />
         </div>
 
         {/* Trend chart — below the fold; scroll down to see it */}

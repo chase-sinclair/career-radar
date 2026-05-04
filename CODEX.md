@@ -26,6 +26,7 @@ Initial setup completed:
 - Confirmed `npm audit` reports `0 vulnerabilities`.
 - Fixed inherited lint issue in `app/methodology/page.tsx`.
 - Added Phase 2 candidate profile model and selector.
+- Added Phase 3 candidate fit scoring and recommendation table.
 
 Important current decision:
 
@@ -420,6 +421,8 @@ Implementation notes:
 
 Goal: turn existing job signals into candidate-specific recommendations.
 
+Status: Complete. The API now computes profile-aware fit scores and explanations in app code, and the primary jobs table ranks opportunities by candidate fit instead of legacy market score alone.
+
 Scope:
 
 - Build deterministic `fit_score` logic separate from old `intent_score` and `computed_score`.
@@ -443,6 +446,15 @@ Exit criteria:
 - Each demo profile produces a meaningfully different ranked job list.
 - Each ranked job has a clear explanation and skill-gap callout.
 - Current SignalPulse scoring remains available only as legacy/source context, not the primary UX.
+
+Implementation notes:
+
+- Candidate fit types now live in `lib/types.ts`.
+- Profile-specific role keywords, known tools, growth tools, and preferred seniority live in `lib/candidateProfiles.ts`.
+- Deterministic fit scoring lives in `lib/candidateFit.ts`.
+- `app/api/signals/route.ts` now accepts the active `profile` and returns fit-enriched jobs.
+- `components/LeadsTable.tsx` now ranks by candidate fit, shows fit explanations and likely gaps, and expands into a fit breakdown plus positioning hook.
+- Legacy market scoring remains visible as a secondary score for context, not the primary ranking signal.
 
 ### Phase 4 - Career Dashboard UX
 
@@ -593,9 +605,9 @@ Exit criteria:
 
 Next recommended work when implementation begins:
 
-1. Phase 3: candidate fit scoring using existing Supabase data.
-2. Phase 4: replace the inherited sales-leads table with candidate-centered recommendation surfaces.
-3. Phase 5: only then consider additive Supabase migrations for persisted candidate concepts.
+1. Phase 4: build the broader career dashboard around the new fit layer.
+2. Add candidate-native sections for skill demand, recurring gaps, and positioning strategy.
+3. Only then consider Phase 5 additive Supabase persistence for candidate concepts.
 
 Do not start Supabase migrations or n8n workflow edits until the profile-aware UI proves the pivot.
 

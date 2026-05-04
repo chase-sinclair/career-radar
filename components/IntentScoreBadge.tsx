@@ -4,9 +4,10 @@ interface Props {
   score: number | null;
   onClick?: () => void;
   isExpanded?: boolean;
+  label?: string;
 }
 
-export default function IntentScoreBadge({ score, onClick, isExpanded }: Props) {
+export default function IntentScoreBadge({ score, onClick, isExpanded, label = 'Score' }: Props) {
   if (score === null) {
     return (
       <span
@@ -81,7 +82,7 @@ export default function IntentScoreBadge({ score, onClick, isExpanded }: Props) 
         onMouseLeave={e => {
           (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none';
         }}
-        aria-label={`Intent score ${score}. Click to ${isExpanded ? 'collapse' : 'expand'} breakdown.`}
+        aria-label={`${label} ${score}. Click to ${isExpanded ? 'collapse' : 'expand'} breakdown.`}
       >
         {inner}
       </button>

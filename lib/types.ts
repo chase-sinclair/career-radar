@@ -12,6 +12,14 @@ export interface ScoreComponents {
   recency:               ScoreComponent;
 }
 
+export interface CandidateFitComponents {
+  role_alignment:   ScoreComponent;
+  skill_overlap:    ScoreComponent;
+  growth_alignment: ScoreComponent;
+  seniority_fit:    ScoreComponent;
+  recency:          ScoreComponent;
+}
+
 // ─── Primitive types ────────────────────────────────────────────────────────
 export type JobFamily =
   | 'Finance'
@@ -45,6 +53,13 @@ export interface JobSignal {
   score_components?: ScoreComponents | null; // Computed by API route — not stored in DB
   computed_score?: number;                    // Sum of score_components — display source of truth
   seniority_label?: 'EXEC' | 'SR' | 'IC' | null; // Computed for UI enrichment — not part of score
+  candidate_fit_components?: CandidateFitComponents | null;
+  fit_score?: number | null;
+  fit_summary?: string | null;
+  positioning_hook?: string | null;
+  matched_skills?: string[];
+  missing_skills?: string[];
+  top_role_match?: string | null;
   sales_hook: string | null;
   is_hot_lead: boolean;
   posted_at: string | null;   // TEXT in DB — SerpApi relative strings e.g. "4 days ago"
@@ -104,6 +119,10 @@ export interface CandidatePreferences {
   target_job_families: JobFamily[];
   priority_tags: string[];
   search_keywords: string[];
+  role_keywords: string[];
+  known_tags: string[];
+  growth_tags: string[];
+  preferred_seniority: Array<'EXEC' | 'SR' | 'IC'>;
 }
 
 export interface CandidateScoringWeights {

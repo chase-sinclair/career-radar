@@ -198,9 +198,9 @@ export default function FilterSidebar({ filters, onChange, defaultFilters, avail
 
         <div style={divider} />
 
-        {/* Hot Leads Toggle */}
+        {/* Legacy market urgency toggle */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 0 }}>
-          <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Hot Leads Only</span>
+          <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Legacy Urgency Only</span>
           <button
             onClick={() => onChange({ ...filters, hot_leads_only: !filters.hot_leads_only })}
             style={{
@@ -233,8 +233,8 @@ export default function FilterSidebar({ filters, onChange, defaultFilters, avail
 
         <div style={divider} />
 
-        {/* Intent Score */}
-        <span style={sectionLabel}>Min Intent Score</span>
+        {/* Market score threshold */}
+        <span style={sectionLabel}>Min Market Score</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <input
             type="range"

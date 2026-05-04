@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabase';
 import type { JobFamily } from '@/lib/types';
+import { getCandidateProfile, resolveCandidateProfileId } from '@/lib/candidateProfiles';
+import { computeCandidateFit } from '@/lib/candidateFit';
 import { computeScoreComponents, computeIntentScore, computeSeniorityLabel } from '@/lib/scoring';
 
 export const dynamic = 'force-dynamic'; // Never cache — data updates daily
@@ -18,6 +20,9 @@ export async function GET(request: NextRequest) {
     const hotOnly  = searchParams.get('hot') === 'true';
     const search   = searchParams.get('search')?.trim() ?? '';
     const tags     = searchParams.getAll('tag');
+    const profile = getCandidateProfile(
+      resolveCandidateProfileId(searchParams.get('profile')),
+    );
 
     // Build query against the view (includes tech_stack array)
     // No row cap — load all matching signals. Paginate here if the dataset grows large.
@@ -63,11 +68,21 @@ export async function GET(request: NextRequest) {
         tech_stack:      signal.tech_stack as string[],
         created_at:      signal.created_at,
       });
+      const seniorityLabel = computeSeniorityLabel(signal.job_title);
+      const candidateFit = computeCandidateFit(profile, {
+        job_title: signal.job_title,
+        raw_description: signal.raw_description,
+        tech_stack: signal.tech_stack as string[],
+        job_family: signal.job_family as JobFamily | null,
+        created_at: signal.created_at,
+        seniority_label: seniorityLabel,
+      });
       return {
         ...signal,
         score_components: components,
         computed_score:   computeIntentScore(components),
-        seniority_label:  computeSeniorityLabel(signal.job_title),
+        seniority_label:  seniorityLabel,
+        ...candidateFit,
       };
     });
 
