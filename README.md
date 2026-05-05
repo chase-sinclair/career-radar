@@ -1,47 +1,38 @@
 # Career Radar
 
-Career Radar is a personalized job-market intelligence dashboard built from the SignalPulse data pipeline.
+Career Radar is a labor-market intelligence app for workers navigating AI, automation, and software-driven role change.
 
-It monitors live job postings, enriches them with AI, stores structured hiring signals in Supabase, and turns the market into candidate-specific recommendations: best-fit jobs, skill gaps, company momentum, positioning advice, and portfolio ideas.
+It analyzes live job postings as market signals, then turns them into readable briefings about emerging roles, rising skills and tools, company hiring patterns, industry shifts, and worker-relevant next moves.
 
-The first version reuses the existing SignalPulse infrastructure while reframing the product around candidates instead of sales teams.
+It is not a job board or resume scanner. The product asks:
 
-## Product Direction
+> How is the market changing, and what is it asking workers to become?
 
-Career Radar answers a more direct question than the original project:
+## Product
 
-> Given a candidate's skills, goals, and target roles, what is the market telling them to do next?
+V1 is organized around Market Lenses:
 
-The dashboard will eventually support:
+- All Market
+- Finance
+- Sales & GTM
+- Operations
+- Marketing
+- Product
+- HR & People Ops
+- Risk & Compliance
+- Data & Analytics
+- Software & AI
+- Consulting & Strategy
 
-- selectable demo candidate profiles
-- profile-aware job ranking
-- skill demand and gap analysis
-- company hiring radar
-- candidate positioning strategy
-- suggested portfolio projects based on market gaps
-- guided onboarding that creates a custom candidate profile
+Main pages:
 
-Initial demo profiles:
-
-- Chase / AI Workflow Builder
-- Finance Transformation Candidate
-- Sales / GTM Candidate
-
-## Current State
-
-This repo is a clean project fork of the original SignalPulse app.
-
-Completed setup:
-
-- copied the useful Next.js, Supabase, n8n, and Docker assets
-- excluded local env files, build output, SQLite runtime DBs, Vercel state, and agent settings
-- initialized a separate GitHub repo
-- created a separate Vercel project named `career-radar`
-- added `CODEX.md` as the active project memory and roadmap
-- added safe env templates
-
-The app still contains inherited SignalPulse screens and data concepts. Phase 1 is focused on product reframe and local stability before deeper candidate-fit logic.
+- `Market Briefing` - simple weekly readout of the strongest signals.
+- `Signals` - source evidence table with search, filtering, tags/tools, dates, and links.
+- `Emerging Roles` - role clusters, why they are emerging, evolved-from roles, tools, companies, and evidence.
+- `Rising Skills & Tools` - rising, table-stakes, and losing-differentiation-alone skill/tool views.
+- `Industries` - segment comparisons such as startups, banks, top tech, consulting, enterprise SaaS, healthcare, and government contractors.
+- `Companies` - company-level hiring signals and transformation categories.
+- `Methodology` - how data is collected, enriched, interpreted, and limited.
 
 ## Architecture
 
@@ -58,10 +49,10 @@ OpenAI enrichment
 Supabase Postgres
        |
        v
-Next.js dashboard
+Next.js app and API routes
        |
        v
-Candidate-specific market intelligence
+Career Radar market briefings
 ```
 
 Main stack:
@@ -72,12 +63,26 @@ Main stack:
 - n8n
 - OpenAI GPT-4o-mini
 - SerpApi Google Jobs
-- Recharts
 - Vercel
 
-## Supabase
+## Current State
 
-Career Radar currently reuses the existing Supabase project and historical job data.
+Career Radar is a separate project fork from SignalPulse and currently reuses the existing Supabase project and historical posting data.
+
+Current implementation:
+
+- Market Briefing homepage
+- Market Lens selector and `?lens=` URL convention
+- Supabase-backed Signals evidence page
+- deterministic MVP pages for roles, skills/tools, industries, companies, and methodology
+- weekly aggregation utilities and API routes
+- proposed labor-market enrichment contract
+- proposed additive Supabase migration
+- inactive repo-only n8n draft workflow for future pipeline reframe
+
+No live Supabase migration has been applied for the new enrichment table yet. No live n8n workflow has been edited.
+
+## Supabase
 
 Existing source objects:
 
@@ -88,30 +93,30 @@ Existing source objects:
 - `signals_with_tags`
 - `refresh_weekly_snapshots()`
 
+Proposed future object:
+
+- `labor_market_enrichments`
+
 Important rule:
 
-> Database changes must be additive and backward-compatible until the original SignalPulse app is retired.
-
-Planned future objects may include:
-
-- `candidate_profiles`
-- `candidate_profile_skills`
-- `candidate_preferences`
-- `candidate_job_matches`
-- `career_insights`
+> Database changes must remain additive and backward-compatible until the original SignalPulse app is retired.
 
 ## n8n Workflows
 
-Workflow exports are committed in:
+Inherited workflow exports:
 
 - `n8n/signalpulse_daily.json`
 - `n8n/signalpulse_snapshots.json`
 
-Current workflows are still the inherited SignalPulse ingestion jobs. They remain useful as the base data pipeline, but the prompt and search strategy will later be reframed around career-market intelligence.
+Backups:
 
-Known workflow issue to fix later:
+- `n8n/backups/2026-05-05/`
 
-- the company insert SQL interpolates `company_name` directly and should be converted to parameter binding.
+Draft future workflow:
+
+- `n8n/marketlens_daily.json`
+
+The draft is inactive and contains no credentials.
 
 ## Local Setup
 
@@ -132,11 +137,9 @@ For the Next.js app, fill in `.env.local`:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ```
-
-The broader `.env` is for future local pipeline or n8n-style tooling. It can stay as placeholders until that work begins.
 
 Run locally:
 
@@ -151,6 +154,14 @@ npm run lint
 npm run build
 ```
 
+## API Routes
+
+- `/api/signals`
+- `/api/tags`
+- `/api/market-briefing?lens=finance`
+- `/api/market-lenses`
+- `/api/market-aggregations`
+
 ## Deployment
 
 Vercel project:
@@ -161,23 +172,19 @@ Vercel project:
 Required Vercel env vars:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
 The original SignalPulse deployment should remain untouched until an intentional cutover.
 
-## Roadmap
+## Documentation
 
-See `CODEX.md` for the active implementation plan.
+See `CODEX.md` for current project memory and phase history.
 
-Immediate order:
+Planning docs:
 
-1. Product reframe and local stability
-2. Hardcoded candidate profile model and selector
-3. Candidate fit scoring using existing Supabase data
-4. Career dashboard UX
-5. Additive Supabase migrations
-6. Pipeline reframe
-7. Personalized onboarding
-8. Deployment/cutover
-9. Demo polish and portfolio story
+- `docs/enrichment-contract.md`
+- `docs/schema-proposal.md`
+- `docs/pipeline-extraction-plan.md`
+- `docs/pipeline-reframe.md`
+- `docs/weekly-briefings.md`
