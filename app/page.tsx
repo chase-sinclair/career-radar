@@ -9,7 +9,8 @@ import {
   resolveMarketLensId,
   type MarketLensId,
 } from '@/lib/marketLenses';
-import { buildMarketBriefing, formatBriefingDate } from '@/lib/marketInsights';
+import { buildWeeklyMarketBriefing } from '@/lib/marketAggregations';
+import { formatBriefingDate } from '@/lib/marketInsights';
 import MarketLensSelect from '@/components/MarketLensSelect';
 
 function readLensFromUrl(): MarketLensId {
@@ -52,7 +53,7 @@ export default function MarketBriefingPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const selectedLens = useMemo(() => getMarketLens(lensId), [lensId]);
-  const briefing = useMemo(() => buildMarketBriefing(signals, selectedLens), [signals, selectedLens]);
+  const briefing = useMemo(() => buildWeeklyMarketBriefing(signals, selectedLens), [signals, selectedLens]);
 
   async function fetchSignals() {
     setLoading(true);
@@ -101,7 +102,7 @@ export default function MarketBriefingPage() {
             <p>A weekly readout on how AI, automation, and software tools are reshaping roles, skills, and hiring demand.</p>
             <div className="briefing-update">
               <span>Updated {formatBriefingDate(briefing.updatedAt)}</span>
-              <span>{briefing.lensSignals.length.toLocaleString()} postings analyzed</span>
+              <span>{briefing.totalSignals.toLocaleString()} postings analyzed</span>
             </div>
           </div>
 
@@ -120,17 +121,17 @@ export default function MarketBriefingPage() {
             <div>
               <span className="callout-dot" />
               <strong>Emerging:</strong>
-              <p>{briefing.emerging.join(', ') || 'Role clusters still forming'}</p>
+              <p>{briefing.emergingRoles.slice(0, 2).map((role) => role.role).join(', ') || 'Role clusters still forming'}</p>
             </div>
             <div>
               <span className="callout-arrow">Up</span>
               <strong>Rising:</strong>
-              <p>{briefing.rising.join(', ') || 'Tool demand still forming'}</p>
+              <p>{briefing.risingSkillsTools.slice(0, 3).map((skill) => skill.name).join(', ') || 'Tool demand still forming'}</p>
             </div>
             <div>
               <span className="callout-eye">Watch</span>
               <strong>Watch:</strong>
-              <p>{briefing.watch.join(', ') || 'No watch signal yet'}</p>
+              <p>{briefing.losingDifferentiationAlone.slice(0, 1).join(', ') || 'No watch signal yet'}</p>
             </div>
           </div>
         </section>
@@ -141,7 +142,7 @@ export default function MarketBriefingPage() {
           </div>
 
           <div className="signal-layout">
-            {briefing.keySignals.map((signal, index) => (
+            {briefing.keyMarketSignals.map((signal, index) => (
               <article
                 key={signal.title}
                 className={`signal-card signal-${signal.tone}${index === 0 ? ' is-large' : ''}`}
@@ -152,6 +153,7 @@ export default function MarketBriefingPage() {
                 <div>
                   <h3>{signal.title}</h3>
                   <p>{signal.body}</p>
+                  <Link href={signal.evidenceHref}>View evidence</Link>
                 </div>
               </article>
             ))}
@@ -168,21 +170,21 @@ export default function MarketBriefingPage() {
             <div>
               <h3>Roles to Watch</h3>
               <ul>
-                {briefing.rolesToWatch.map((role) => <li key={role}>{role}</li>)}
+                {briefing.emergingRoles.slice(0, 4).map((role) => <li key={role.role}>{role.role}</li>)}
               </ul>
               <Link href={`/emerging-roles?lens=${lensId}`}>View details</Link>
             </div>
             <div>
               <h3>Skills Moving Up</h3>
               <ul>
-                {briefing.skillsMovingUp.map((skill) => <li key={skill}>{skill}</li>)}
+                {briefing.risingSkillsTools.slice(0, 5).map((skill) => <li key={skill.name}>{skill.name}</li>)}
               </ul>
               <Link href={`/skills-tools?lens=${lensId}`}>View details</Link>
             </div>
             <div>
               <h3>Losing Differentiation Alone</h3>
               <ul>
-                {briefing.losingDifferentiation.map((skill) => <li key={skill}>{skill}</li>)}
+                {briefing.losingDifferentiationAlone.slice(0, 4).map((skill) => <li key={skill}>{skill}</li>)}
               </ul>
               <Link href={`/skills-tools?lens=${lensId}`}>View details</Link>
             </div>
@@ -202,7 +204,7 @@ export default function MarketBriefingPage() {
               {briefing.industryReadout.map((row) => (
                 <div key={row.segment} className="industry-row">
                   <span>{row.segment}</span>
-                  <span>{row.signal}</span>
+                  <span>{row.strongestSignal}</span>
                 </div>
               ))}
             </div>
@@ -212,7 +214,7 @@ export default function MarketBriefingPage() {
             <div className="section-heading">
               <h2>What This Means for Workers</h2>
             </div>
-            <p>{briefing.workerMeaning}</p>
+            <p>{briefing.workerTakeaway}</p>
             <div className="worker-links">
               <Link href={`/industries?lens=${lensId}`}>For {selectedLens.workerPath}</Link>
               <Link href={`/signals?lens=${lensId}`}>View source signals</Link>
