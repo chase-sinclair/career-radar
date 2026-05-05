@@ -757,6 +757,139 @@ select {
   text-decoration: none;
 }
 
+.role-grid,
+.segment-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.segment-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.insight-card,
+.insight-table-panel,
+.company-signal-row {
+  background: rgba(255, 254, 250, 0.88);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--panel-shadow);
+}
+
+.insight-card {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.insight-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.insight-card-header span,
+.company-signal-row span {
+  color: var(--text-muted);
+  font-family: var(--font-dm-mono), monospace;
+  font-size: 12px;
+}
+
+.insight-card-header a,
+.company-signal-row a,
+.movement-section a {
+  color: var(--teal-dark);
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.insight-card h2,
+.company-signal-row h2 {
+  margin: 0;
+  color: var(--navy);
+  font-family: var(--font-editorial), Georgia, serif;
+  font-size: 28px;
+  line-height: 1.04;
+}
+
+.insight-card p,
+.company-signal-row p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.insight-card dl {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.insight-card dt {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.insight-card dd {
+  margin: 3px 0 0;
+  color: var(--navy-soft);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.insight-table-panel {
+  overflow: auto;
+}
+
+.company-signal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.company-signal-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(220px, 1fr) minmax(180px, 0.8fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 18px 20px;
+}
+
+.company-signal-row strong {
+  display: block;
+  color: var(--navy);
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.plain-list {
+  margin: 14px 0 18px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.plain-list li {
+  color: var(--navy-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.plain-list li::before {
+  content: "-";
+  color: var(--teal);
+  margin-right: 10px;
+}
+
 .methodology-steps {
   margin: 12px 0;
   border-top: 1px solid var(--border);
@@ -878,7 +1011,10 @@ select {
 
   .briefing-masthead,
   .signal-layout,
-  .bottom-readout {
+  .bottom-readout,
+  .role-grid,
+  .segment-grid,
+  .company-signal-row {
     grid-template-columns: 1fr;
   }
 

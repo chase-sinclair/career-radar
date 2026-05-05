@@ -24,6 +24,35 @@ export interface CompanySignalSummary {
   topRole: string;
   topTools: string[];
   latestSignal: string | null;
+  transformationCategory: string;
+}
+
+export interface RoleSummary {
+  role: string;
+  count: number;
+  whyEmerging: string;
+  evolvedFrom: string;
+  commonTools: string[];
+  companies: string[];
+  evidence: JobSignal[];
+}
+
+export interface SkillToolSummary {
+  name: string;
+  count: number;
+  category: 'Rising' | 'Table stakes' | 'AI-adjacent' | 'Role-specific';
+  roleFamilies: string[];
+  companies: string[];
+  exampleRoles: string[];
+}
+
+export interface IndustrySegmentSummary {
+  segment: string;
+  count: number;
+  strongestSignal: string;
+  topRoles: string[];
+  topTools: string[];
+  evidence: JobSignal[];
 }
 
 export interface MarketBriefing {
@@ -70,6 +99,10 @@ const LESS_DIFFERENTIATING_BY_LENS: Record<string, string[]> = {
   'software-ai': ['Prompt engineering alone', 'Generic Python', 'Prototype-only AI work', 'Framework familiarity without production patterns'],
   'consulting-strategy': ['Slide strategy without implementation', 'Tool selection without workflow design', 'Generic transformation language', 'Manual implementation tracking'],
 };
+
+export function getLessDifferentiatingSignals(lens: MarketLens): string[] {
+  return LESS_DIFFERENTIATING_BY_LENS[lens.id] ?? LESS_DIFFERENTIATING_BY_LENS.all;
+}
 
 function titleCase(value: string): string {
   return value
@@ -137,9 +170,123 @@ export function summarizeCompanies(signals: JobSignal[], limit = 10): CompanySig
       topRole: getTopRoles(rows, 1)[0]?.label ?? 'Role cluster forming',
       topTools: getTopTags(rows, 4).map((item) => item.label),
       latestSignal: rows.map((row) => row.created_at).sort((a, b) => b.localeCompare(a))[0] ?? null,
+      transformationCategory: inferTransformationCategory(rows),
     }))
     .sort((a, b) => b.count - a.count || a.company.localeCompare(b.company))
     .slice(0, limit);
+}
+
+function inferEvolvedFrom(role: string): string {
+  const lower = role.toLowerCase();
+  if (lower.includes('data') || lower.includes('analytics')) return 'Data Analyst';
+  if (lower.includes('finance') || lower.includes('erp') || lower.includes('fp&a')) return 'Finance Analyst';
+  if (lower.includes('sales') || lower.includes('revenue') || lower.includes('gtm')) return 'Sales Operations';
+  if (lower.includes('risk') || lower.includes('compliance') || lower.includes('governance')) return 'Compliance Analyst';
+  if (lower.includes('product')) return 'Product Manager';
+  if (lower.includes('software') || lower.includes('engineer') || lower.includes('ai')) return 'Software Engineer';
+  if (lower.includes('operations') || lower.includes('workflow')) return 'Operations Analyst';
+  return 'Traditional role family';
+}
+
+function inferWhyEmerging(role: string, tools: string[]): string {
+  const toolPhrase = tools.length > 0 ? tools.slice(0, 3).join(', ') : 'modern software tools';
+  return `${role} is showing up as companies combine domain work with ${toolPhrase}, automation, and stronger systems fluency.`;
+}
+
+export function summarizeEmergingRoles(signals: JobSignal[], limit = 9): RoleSummary[] {
+  const grouped = signals.reduce<Record<string, JobSignal[]>>((acc, signal) => {
+    const role = normalizeRoleTitle(signal.job_title);
+    acc[role] = [...(acc[role] ?? []), signal];
+    return acc;
+  }, {});
+
+  return Object.entries(grouped)
+    .map(([role, rows]) => {
+      const tools = getTopTags(rows, 5).map((item) => item.label);
+      return {
+        role,
+        count: rows.length,
+        whyEmerging: inferWhyEmerging(role, tools),
+        evolvedFrom: inferEvolvedFrom(role),
+        commonTools: tools,
+        companies: getTopCompanies(rows, 4).map((item) => item.label),
+        evidence: rows.slice(0, 3),
+      };
+    })
+    .filter((summary) => summary.role.length > 3)
+    .sort((a, b) => b.count - a.count || a.role.localeCompare(b.role))
+    .slice(0, limit);
+}
+
+function categorizeSkillTool(name: string, count: number): SkillToolSummary['category'] {
+  const lower = name.toLowerCase();
+  if (['openai', 'langchain', 'rag', 'llm', 'ai', 'machine learning', 'prompt'].some((token) => lower.includes(token))) {
+    return 'AI-adjacent';
+  }
+  if (count >= 10) return 'Table stakes';
+  if (['salesforce', 'netsuite', 'workday', 'hubspot', 'snowflake', 'dbt', 'power bi', 'tableau'].some((token) => lower.includes(token))) {
+    return 'Role-specific';
+  }
+  return 'Rising';
+}
+
+export function summarizeSkillTools(signals: JobSignal[], limit = 18): SkillToolSummary[] {
+  return getTopTags(signals, limit).map((item) => {
+    const matching = signals.filter((signal) => (signal.tech_stack ?? []).includes(item.label));
+    return {
+      name: item.label,
+      count: item.count,
+      category: categorizeSkillTool(item.label, item.count),
+      roleFamilies: getTopRoles(matching, 3).map((role) => role.label),
+      companies: getTopCompanies(matching, 3).map((company) => company.label),
+      exampleRoles: matching.slice(0, 3).map((signal) => normalizeRoleTitle(signal.job_title)),
+    };
+  });
+}
+
+function inferCompanySegment(signal: JobSignal): string {
+  const text = `${signal.company_name} ${signal.job_title} ${signal.raw_description ?? ''}`.toLowerCase();
+  if (/(jpmorgan|chase|citi|goldman|morgan stanley|bank|wells fargo|capital one|bny|ubs)/.test(text)) return 'Banks';
+  if (/(deloitte|accenture|pwc|kpmg|ey|bain|bcg|mckinsey|consulting)/.test(text)) return 'Consulting';
+  if (/(openai|anthropic|google|microsoft|amazon|meta|apple|databricks|snowflake)/.test(text)) return 'Top Tech';
+  if (/(hospital|health|medical|clinic|pharma|biotech)/.test(text)) return 'Healthcare';
+  if (/(government|federal|defense|contractor|public sector|dod)/.test(text)) return 'Government Contractors';
+  if (/(saas|software|platform|cloud|startup|series)/.test(text)) return 'Enterprise SaaS';
+  return 'Startups';
+}
+
+function inferTransformationCategory(signals: JobSignal[]): string {
+  const text = signals.map((signal) => `${signal.job_title} ${(signal.tech_stack ?? []).join(' ')}`).join(' ').toLowerCase();
+  if (/(risk|governance|compliance|audit|security|privacy)/.test(text)) return 'Governance and risk control';
+  if (/(salesforce|hubspot|crm|revenue|gtm|sales)/.test(text)) return 'Revenue systems automation';
+  if (/(netsuite|workday|sap|oracle|finance|erp|fp&a)/.test(text)) return 'Finance systems modernization';
+  if (/(data|analytics|snowflake|dbt|databricks|sql|power bi|tableau)/.test(text)) return 'Data and analytics modernization';
+  if (/(openai|ai|llm|automation|workflow|agent)/.test(text)) return 'AI workflow automation';
+  return 'Operating model modernization';
+}
+
+export function summarizeIndustrySegments(signals: JobSignal[]): IndustrySegmentSummary[] {
+  const grouped = signals.reduce<Record<string, JobSignal[]>>((acc, signal) => {
+    const segment = inferCompanySegment(signal);
+    acc[segment] = [...(acc[segment] ?? []), signal];
+    return acc;
+  }, {});
+
+  const preferredOrder = ['Startups', 'Banks', 'Top Tech', 'Consulting', 'Enterprise SaaS', 'Healthcare', 'Government Contractors'];
+
+  return preferredOrder
+    .map((segment) => {
+      const rows = grouped[segment] ?? [];
+      return {
+        segment,
+        count: rows.length,
+        strongestSignal: rows.length > 0 ? inferTransformationCategory(rows) : 'No strong signal yet',
+        topRoles: getTopRoles(rows, 3).map((item) => item.label),
+        topTools: getTopTags(rows, 4).map((item) => item.label),
+        evidence: rows.slice(0, 3),
+      };
+    })
+    .filter((segment) => segment.count > 0);
 }
 
 function inferIndustryReadout(signals: JobSignal[]): IndustryReadout[] {

@@ -89,7 +89,9 @@ export default function SignalsPage() {
 
   useEffect(() => {
     const initialLens = readLensFromUrl();
+    const params = new URLSearchParams(window.location.search);
     setLensId(initialLens);
+    setSearch(params.get('search') ?? '');
     fetchSignals(initialLens);
   }, []);
 
