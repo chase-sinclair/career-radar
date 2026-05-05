@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono, DM_Mono } from 'next/font/google';
+import { Cormorant_Garamond, Geist, Geist_Mono, DM_Mono } from 'next/font/google';
 import NavLinks from '@/components/NavLinks';
 import './globals.css';
 
@@ -19,10 +19,16 @@ const dmMono = DM_Mono({
   weight: ['400', '500'],
 });
 
+const editorial = Cormorant_Garamond({
+  variable: '--font-editorial',
+  subsets: ['latin'],
+  weight: ['600', '700'],
+});
+
 export const metadata: Metadata = {
-  title: 'Career Radar - Personalized Job Market Intelligence',
+  title: 'Career Radar - Labor Market Intelligence',
   description:
-    'Monitor live hiring signals and translate them into candidate-specific job matches, skill gaps, and career strategy.',
+    'Track how roles, skills, tools, and hiring demand are changing across the AI-era labor market.',
 };
 
 export default function RootLayout({
@@ -31,52 +37,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${dmMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${dmMono.variable} ${editorial.variable} h-full antialiased`}
     >
       <body style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <header
-          style={{
-            background: 'var(--bg-surface)',
-            borderBottom: '1px solid var(--border)',
-            padding: '0 24px',
-            height: 52,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexShrink: 0,
-            position: 'sticky',
-            top: 0,
-            zIndex: 40,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="22" height="22" rx="6" fill="#6366f1" fillOpacity="0.15"/>
-              <polyline
-                points="3,11 7,11 9,6 11,16 13,8 15,11 19,11"
-                stroke="#6366f1"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
-              />
-            </svg>
-            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-              <span
-                style={{
-                  fontFamily: 'var(--font-dm-mono), monospace',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  color: 'var(--text-primary)',
-                  letterSpacing: '-0.02em',
-                }}
-              >
-                Career Radar
-              </span>
-              <span className="header-subtitle" style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                Job Market Intelligence
-              </span>
-            </div>
+        <header className="app-header">
+          <div className="brand-lockup" aria-label="Career Radar">
+            <span className="brand-mark" aria-hidden="true" />
+            <span className="brand-text">Career Radar</span>
           </div>
 
           <NavLinks />

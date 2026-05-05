@@ -1,7 +1,7 @@
-﻿# CODEX.md - Career Radar
+# CODEX.md - Career Radar
 
 > Project memory and execution plan for the SignalPulse pivot.
-> This file is the Codex-facing source of truth for the new project, similar in spirit to `CLAUDE.md` in the original SignalPulse repo.
+> This file is the Codex-facing source of truth for the project direction, implementation phases, and constraints.
 
 ---
 
@@ -15,647 +15,640 @@ The original SignalPulse project should remain untouched unless explicitly reque
 C:\Users\chase\Documents\career-radar
 ```
 
-Initial setup completed:
+Current state:
 
-- Copied useful app source from SignalPulse into `career-radar`.
-- Excluded runtime/generated/local files: `.env.local`, `.next/`, `.vercel/`, `.claude/`, `database*.sqlite`, SQLite WAL/SHM files, and `tsconfig.tsbuildinfo`.
-- Added a clean `.gitignore`.
-- Initialized `career-radar` as a separate git repository.
-- Installed dependencies with `npm install`.
-- Verified TypeScript with `tsc --noEmit --incremental false`.
-- Confirmed `npm audit` reports `0 vulnerabilities`.
-- Fixed inherited lint issue in `app/methodology/page.tsx`.
-- Added Phase 2 candidate profile model and selector.
-- Added Phase 3 candidate fit scoring and recommendation table.
+- The app is a Next.js 16 project deployed separately from the original SignalPulse project.
+- It reuses the existing Supabase project `qolusthqrhcontdvfvyx`.
+- It reuses the existing n8n / SerpApi / OpenAI / Supabase ingestion pattern.
+- The repo currently contains prior candidate-profile experiment work, but the product direction has pivoted again.
+- The new product direction is labor-market intelligence for workers navigating AI, automation, and software-driven role change.
 
 Important current decision:
 
-- Keep the existing Supabase project.
-- Likely keep the existing Vercel setup long-term, but avoid overwriting the current production deployment until Career Radar is ready.
-- Treat current database changes as additive and backward-compatible so SignalPulse can keep running during the pivot.
+- Keep the existing Supabase project for now.
+- Keep all database changes additive and backward-compatible.
+- Do not modify the original SignalPulse repo.
+- Do not start Supabase migrations or n8n workflow edits until the new Market Briefing UI and enrichment contract are clear.
 
 ---
 
-## 1. Product Pivot
+## 1. Product Thesis
 
-SignalPulse started as a B2B sales-intelligence dashboard that identifies software buying windows from job postings.
+SignalPulse started as a B2B sales-intelligence dashboard that identified software buying windows from job postings.
 
-Career Radar pivots the same infrastructure toward job-market intelligence for candidates.
+Career Radar is now becoming a labor-market intelligence product.
 
-Core product thesis:
+Core thesis:
 
-> The system monitors the broader job market, then adapts the findings to a selected candidate profile so the dashboard shows what matters for that candidate.
+> Career Radar helps workers understand how AI, automation, and modern software tools are reshaping roles, skills, tools, and career paths by analyzing live job postings as labor-market signals.
 
-The product should answer:
+This is not a job board.
 
-- Which jobs are best fit for this candidate?
-- Which companies are hiring in patterns relevant to this candidate?
-- Which skills are in demand for the candidate's target roles?
-- Which skill gaps are blocking stronger matches?
-- How should the candidate position themselves?
-- What portfolio project should the candidate build next?
+This is not only for tech workers.
 
-This should feel less like a raw job board and more like a personalized career strategy engine.
+This is not a resume scanner.
 
----
+The product should feel closer to:
 
-## 2. Target Experience
+- A labor-market radar for the AI era.
+- Google Trends for role and skill transformation.
+- A weekly intelligence briefing on how work is changing.
 
-The first polished version should support two candidate-personalization modes.
+Primary question:
 
-### Demo Profile Mode
+> What is the market asking workers to become?
 
-Ship three preloaded candidate profiles so the product can be demoed instantly.
+Supporting questions:
 
-Initial profiles:
-
-1. Chase / AI Workflow Builder
-   - Target roles: AI Automation Engineer, Workflow Automation Engineer, Full-Stack AI Builder, GTM Engineer, Internal Tools Engineer.
-   - Strengths: Next.js, Supabase, n8n, OpenAI workflows, productized automation, dashboards, full-stack implementation.
-   - Desired direction: AI systems, automation, applied data workflows, internal tools, product engineering.
-
-2. Finance Transformation Candidate
-   - Target roles: FP&A Analyst, Finance Systems Analyst, ERP Implementation Analyst, Revenue/Finance Operations Analyst, Strategic Finance Associate.
-   - Strengths: Excel/Sheets modeling, ERP exposure, accounting workflows, reporting, process improvement, finance automation.
-   - Desired direction: finance transformation, FP&A systems, ERP modernization, operational finance, analytics-backed planning.
-
-3. Sales / GTM Candidate
-   - Target roles: Account Executive, SDR/BDR, Sales Operations Associate, GTM Specialist, Revenue Growth Associate.
-   - Strengths: prospecting, CRM usage, pipeline management, sales messaging, customer discovery, revenue process discipline.
-   - Desired direction: high-growth sales roles, GTM systems fluency, AI-assisted prospecting, revenue operations awareness.
-
-Selecting a profile should change:
-
-- ranked jobs
-- KPI cards
-- skill demand map
-- company radar
-- role clusters
-- fit explanations
-- skill gaps
-- suggested positioning
-- suggested portfolio projects
-
-### Onboarding Mode
-
-Later, add a guided questionnaire that creates a candidate profile from user answers.
-
-Likely questions:
-
-- What roles are you targeting?
-- What skills/tools do you already have?
-- What skills/tools do you want to use more?
-- What industries or company types interest you?
-- What do you optimize for: compensation, remote work, learning, stability, prestige, startup pace, speed to offer?
-- What seniority level are you targeting?
-- Are you looking for full-time, freelance, startup, enterprise, or agency work?
+- What roles are emerging?
+- Which traditional roles are being transformed?
+- Which skills are becoming expected?
+- Which tools are rising across industries?
+- Which standalone skills are losing differentiation unless paired with newer capabilities?
+- Which companies and industries are signaling workforce transformation through hiring?
+- What should workers learn next to stay relevant?
 
 ---
 
-## 3. Infrastructure Strategy
+## 2. Target Users
 
-Use the existing infrastructure instead of rebuilding from scratch.
+Career Radar is for knowledge workers and career builders whose roles are being reshaped by AI, automation, and modern software tools.
 
-Existing pieces to reuse:
+It should support many role families, including:
 
-- Next.js 16 app structure
-- Supabase project `qolusthqrhcontdvfvyx`
-- Existing job/company/signal/tag data
-- n8n scheduled ingestion pattern
-- SerpApi Google Jobs collection
-- OpenAI enrichment workflow
-- Vercel deployment path
+- Finance
+- Sales & GTM
+- Operations
+- Marketing
+- Product
+- HR & People Ops
+- Risk & Compliance
+- Data & Analytics
+- Software & AI
+- Consulting & Strategy
 
-Important rule:
+Examples of worker-facing questions:
 
-> Because the Supabase project is shared with the original SignalPulse app, database changes must be additive and backward-compatible until SignalPulse is officially retired.
+- Finance: Is Excel enough, or are roles now asking for SQL, Power BI, NetSuite, Workday, Python, and automation?
+- Sales & GTM: Are GTM roles becoming more technical through CRM workflows, enrichment tools, AI prospecting, and revenue automation?
+- Operations: Are process roles becoming workflow automation roles?
+- Risk & Compliance: Are banks and enterprises hiring for AI governance, model risk, documentation, and responsible AI?
+- Marketing: Are marketing operations roles shifting toward AI content workflows, analytics, and automation?
+- Software & AI: Which AI engineering, evals, workflow, and infrastructure roles are actually appearing in job postings?
 
-Do not drop or rename existing tables/columns yet.
+Positioning line:
 
-Current Supabase base tables:
+> Career Radar shows how roles are changing across industries, what skills and tools are rising, and what workers should learn next.
+
+---
+
+## 3. MVP Product Surface
+
+The MVP should use the visual direction from the provided MarketLens mockup:
+
+- Clean editorial intelligence-report feel.
+- Navy/teal/orange palette.
+- Large serif-style briefing headline.
+- Simple top navigation.
+- Lens selector, but no confusing homepage filters.
+- Homepage sections arranged like a weekly market readout.
+- Cards may exist, but the page should not feel like a dense configurable dashboard.
+
+Recommended MVP tabs:
+
+### Market Briefing
+
+Homepage. Answers: "What is changing in the labor market right now?"
+
+Expected sections:
+
+- Executive briefing.
+- Key market signals.
+- Market movement snapshot.
+- Industry readout.
+- What this means for workers.
+- Evidence CTA linking to the raw signal explorer.
+
+### Signals
+
+Evidence layer. Shows the enriched job postings behind the insights.
+
+This is where search, detailed tables, and filters belong. Keep them off the homepage.
+
+### Emerging Roles
+
+Tracks new, niche, or rapidly mutating job titles.
+
+For each role, show:
+
+- Normalized role title.
+- Why it is emerging.
+- Traditional role it evolved from.
+- Common skills/tools.
+- Companies or industries hiring.
+- Evidence snippets from postings.
+
+### Rising Skills & Tools
+
+Combines skill and tool intelligence for MVP.
+
+Categories:
+
+- Rising skills.
+- Table-stakes skills.
+- AI-adjacent skills.
+- Role-specific tools.
+- Skills losing differentiation alone.
+
+### Industries
+
+Compares role and skill change across market segments.
+
+Initial segments:
+
+- Startups.
+- Banks.
+- Top Tech.
+- Consulting.
+- Enterprise SaaS.
+- Healthcare.
+- Government Contractors.
+
+### Companies
+
+Shows what companies reveal through hiring.
+
+For each company, show:
+
+- Hiring focus.
+- Top roles.
+- Top tools/skills.
+- Transformation category.
+- Evidence from postings.
+
+### About / Methodology
+
+Explains the pipeline:
+
+- SerpApi Google Jobs collection.
+- n8n scheduling.
+- OpenAI enrichment.
+- Supabase storage.
+- App-level aggregation and inference.
+- Difference between extracted facts and inferred market interpretation.
+
+---
+
+## 4. Market Lenses
+
+The product should use market lenses, not candidate profiles.
+
+Initial lenses:
+
+- All Market
+- Finance
+- Sales & GTM
+- Operations
+- Marketing
+- Product
+- HR & People Ops
+- Risk & Compliance
+- Data & Analytics
+- Software & AI
+- Consulting & Strategy
+
+Later lenses may include:
+
+- AI & Automation
+- Enterprise AI Governance
+- Startups
+- Banks
+- Top Tech
+- Consulting Firms
+
+Lens behavior:
+
+- The selected lens changes briefing text, role clusters, skills/tools, companies, industries, and evidence.
+- Lenses are analysis scopes, not user profiles.
+- The homepage should keep lens selection simple.
+
+---
+
+## 5. Data Direction
+
+Existing base tables remain useful:
 
 - `companies`
 - `job_signals`
 - `signal_tags`
 - `weekly_snapshots`
 
-Current useful view/function:
+Existing useful view/function:
 
 - `signals_with_tags`
 - `refresh_weekly_snapshots()`
 
-Planned additive tables/views:
+Existing fields already provide:
 
-- `candidate_profiles`
-- `candidate_profile_skills`
-- `candidate_preferences`
-- `candidate_job_matches` or profile-specific match view
-- `career_insights` or generated recommendations table
+- Job title.
+- Company.
+- Job description.
+- Job family.
+- Tags/tools through `signal_tags`.
+- Posting URL.
+- Ingestion time.
+- Legacy intent score.
 
-Potential added fields for future ingestion:
+New labor-market intelligence fields should be additive.
 
-- `role_category`
-- `seniority`
-- `remote_status`
-- `employment_type`
-- `salary_min`
-- `salary_max`
-- `required_skills`
-- `nice_to_have_skills`
+Target enrichment contract:
 
----
+```json
+{
+  "role_title_normalized": "AI Workflow Engineer",
+  "role_family": "Operations",
+  "role_cluster": "AI Workflow Automation",
+  "emerging_role_score": 8,
+  "ai_relevance_score": 9,
+  "automation_relevance_score": 9,
+  "company_type": "Startup",
+  "industry": "Enterprise SaaS",
+  "seniority": "IC",
+  "tools": ["OpenAI", "n8n", "Zapier", "Python"],
+  "technical_skills": ["API integration", "workflow automation"],
+  "business_skills": ["process redesign", "stakeholder communication"],
+  "ai_skills": ["RAG", "prompt evaluation", "LLM workflow design"],
+  "responsibilities": ["build internal AI tools", "automate business workflows"],
+  "transformation_category": "AI Workflow Automation",
+  "role_evolution_signal": "Operations and engineering responsibilities are converging around AI-enabled workflow design.",
+  "less_differentiating_alone_signals": ["prompt engineering alone"],
+  "market_insight": "This role suggests growing demand for workers who can connect AI models to operational systems."
+}
+```
 
-## 4. Data Model Direction
+Important distinction:
 
-Existing `job_signals` should become the source job-posting/event table.
+- Extracted facts: role title, tools, skills, company, industry, responsibilities.
+- Inferred signals: emerging role score, role evolution notes, less differentiating alone signals, market insight.
 
-Existing `signal_tags` should be interpreted more broadly as skills/tools, not just B2B buying-signal tags.
+Avoid saying "dead skills." Use:
 
-New candidate-specific logic should not overwrite old `intent_score`.
-
-Instead, introduce candidate-specific concepts:
-
-- `fit_score`: how well this role matches the selected candidate
-- `growth_score`: how useful this role is for the candidate's desired direction
-- `gap_score`: how many missing skills separate the candidate from a strong match
-- `explanation`: why this job is ranked this way for this candidate
-- `positioning_hook`: how the candidate should frame themselves for the role
-
-Candidate matching should combine:
-
-- target role alignment
-- skill overlap
-- desired skill growth
-- company/industry preference
-- seniority fit
-- remote/location preference if data is available
-- recency
-- market velocity signals
-
----
-
-## 5. UI Direction
-
-Replace the inherited sales-leads framing with candidate-centered decision surfaces.
-
-Recommended primary navigation:
-
-- Briefing
-- Best-Fit Jobs
-- Skill Radar
-- Company Radar
-- Strategy
-- Methodology
-
-Recommended first dashboard sections:
-
-1. Candidate Selector
-   - Three demo profiles at first.
-   - Later: onboarding-generated profile.
-
-2. Career Briefing
-   - A short synthesized summary for the selected profile.
-   - Example: "You have 18 high-fit opportunities this week. AI workflow automation demand is rising. Your top gap is Salesforce experience."
-
-3. Best-Fit Jobs
-   - Ranked cards or dense list.
-   - Show match score, missing skills, why it fits, why it may not, and suggested application angle.
-
-4. Skill Demand Map
-   - Skills/tools appearing in matching jobs.
-   - Separate current strengths, recurring gaps, and emerging skills.
-
-5. Company Radar
-   - Companies repeatedly hiring in relevant role clusters.
-   - Highlight acceleration and repeated demand.
-
-6. Positioning Strategy
-   - Candidate-specific recommendations.
-   - Example: "Position as AI Workflow Engineer, not generic full-stack developer."
-
-7. Portfolio Project Recommendations
-   - Suggestions generated from market gaps.
-   - Example: "Build a finance workflow assistant that reconciles ERP exports, highlights planning variances, and drafts stakeholder updates."
+> Losing differentiation alone.
 
 ---
 
-## 6. n8n Workflow Status
+## 6. Ingestion Direction
 
-Workflow exports are now present in the project:
+The current n8n workflow is still valuable, but its purpose must change.
 
-- `n8n/signalpulse_daily.json`
-- `n8n/signalpulse_snapshots.json`
+Current workflow:
 
-Verified facts:
+- Runs daily at 6 AM.
+- Uses SerpApi Google Jobs searches.
+- Sends postings to GPT-4o-mini.
+- Extracts score, reason, tech_stack, and job_family.
+- Writes data into Supabase.
 
+New workflow goal:
+
+> Analyze each job posting as a labor-market intelligence signal. Extract what it reveals about emerging roles, AI adoption, required skills, requested tools, company type, role evolution, and worker-relevant market shifts.
+
+Search queries need to broaden beyond the old SignalPulse software-buying intent queries.
+
+Example future queries:
+
+- AI workflow automation.
+- AI governance analyst.
+- GTM engineer.
+- finance systems analyst automation.
+- FP&A Power BI SQL automation.
+- RevOps automation.
+- marketing operations AI.
+- HR operations automation.
+- model risk AI.
+- LLM evaluation.
+- internal tools AI.
+- operations workflow automation.
+- AI transformation consultant.
+
+Do not edit the live workflow until exports are backed up and the new schema is reviewed.
+
+---
+
+## 7. Current Infrastructure Facts
+
+Supabase:
+
+- Project ref: `qolusthqrhcontdvfvyx`
+- Existing schema dump: `supabase/schema.sql`
+- Migrations directory currently empty.
+- RLS allows public SELECT in practice.
+- Known issue: broad grants should be tightened later.
+- Known issue: missing secondary indexes for dashboard/query paths.
+- Known issue: `refresh_weekly_snapshots()` should not be callable by `anon`.
+
+n8n:
+
+- Workflow exports are present:
+  - `n8n/signalpulse_daily.json`
+  - `n8n/signalpulse_snapshots.json`
 - Daily workflow name: `SignalPulse AI`
-- Daily workflow active: true
-- Daily workflow node count: 14
 - Snapshot workflow name: `signalpulse_snapshots`
-- Snapshot workflow active: true
-- Snapshot workflow node count: 2
-- Daily schedule: 6 AM
-- Snapshot schedule: cron `0 23 * * 0`, Sunday 23:00
+- Daily workflow active at export time.
+- Snapshot workflow active at export time.
 - OpenAI model: `gpt-4o-mini`
-- Exported workflow contains credential references only, not raw secrets.
+- Credentials are referenced by name only, not exported as secrets.
 
-Credential references seen:
-
-- `OpenAI account`
-- `Postgres account`
-- `SerpAPI account`
-- `Supabase account`
-
-Important workflow finding:
-
-- The company insert SQL currently interpolates `company_name` directly:
+Known workflow issue:
 
 ```sql
 INSERT INTO companies (name)
 VALUES ('{{ $json.company_name }}')
 ```
 
-This can break on apostrophes and should be converted to parameter binding before relying on the workflow long-term.
-
-Another important finding:
-
-- Current workflow query list differs from older docs. The export uses `dbt data transformation engineer`, not `Databricks data engineer`.
+This direct interpolation can break on apostrophes and should be replaced with parameter binding before relying on the workflow long-term.
 
 ---
 
-## 7. Supabase Status
+## 8. Implementation Phases
 
-`supabase/schema.sql` exists and was created from a Supabase CLI dump.
-
-Schema dump is a snapshot, not canonical migration history.
-
-`supabase/migrations/` is currently empty.
-
-Known schema concerns to fix later:
-
-1. Missing secondary indexes
-   - The app filters/orders by `created_at`, `intent_score`, `is_hot_lead`, `job_family`, `company_name`, and joins through `signal_tags.signal_id`.
-   - Add indexes before scaling.
-
-2. Overbroad grants
-   - `anon` and `authenticated` have broad `GRANT ALL` privileges in the dump.
-   - RLS currently allows public SELECT only, but grants should be tightened for a public read-only product.
-
-3. Public RPC concern
-   - `refresh_weekly_snapshots()` is granted to `anon`.
-   - Since this is a write path through RPC, restrict it to service-role/admin usage.
-
-4. Extension dependency
-   - UUID defaults use `extensions.uuid_generate_v4()`.
-   - Fresh restores need `uuid-ossp` available in the `extensions` schema.
-
-Product decision:
-
-- Dashboard should remain public read-only.
-
----
-
-## 8. Repo Hygiene Plan
-
-Original SignalPulse should remain untouched for now.
-
-In Career Radar, avoid committing:
-
-- `.env.local`
-- `.next/`
-- `.vercel/`
-- `.claude/`
-- `database*.sqlite`
-- `*.sqlite-shm`
-- `*.sqlite-wal`
-- `tsconfig.tsbuildinfo`
-
-Original SignalPulse has tracked runtime artifacts that can be cleaned later, but only after explicit approval.
-
-User confirmed:
-
-- `database3.sqlite` and related SQLite runtime files are disposable now that workflow JSON exports exist.
-
----
-
-## 9. Implementation Phases
-
-This roadmap is ordered deliberately. The early phases prove the product pivot with the least production risk. Supabase and n8n changes should stay additive until the new experience is clearly better than the original SignalPulse dashboard.
+This is the revised roadmap after the labor-market intelligence pivot.
 
 ### Phase 0 - Baseline And Safety
 
-Goal: make `career-radar` safe to work in independently, with a clean memory trail and no accidental impact on SignalPulse.
+Status: Complete.
 
-Scope:
-
-- Keep all work in `C:\Users\chase\Documents\career-radar`.
-- Keep `C:\Users\chase\Documents\signalpulse` untouched unless explicitly requested.
-- Confirm no secrets, SQLite runtime files, `.vercel/`, `.claude/`, `.next/`, or `.env.local` are committed.
-- Preserve current Supabase and Vercel production behavior until cutover is explicitly approved.
-- Keep `CODEX.md` updated after meaningful product or architecture decisions.
+Goal: keep `career-radar` independent and protect the original SignalPulse project.
 
 Exit criteria:
 
-- New repo exists and is separate from SignalPulse.
-- `CODEX.md` exists and captures the pivot plan.
-- TypeScript passes.
-- Known copied issues are documented.
+- Separate repo exists.
+- Original SignalPulse remains untouched.
+- Secrets and runtime artifacts are not committed.
+- `CODEX.md` exists as active project memory.
+
+### Phase 1 - Fork Stabilization
 
 Status: Complete.
 
-### Phase 1 - Product Reframe And Local Stability
-
-Goal: make the copied app recognizably Career Radar while keeping the existing data pipeline unchanged.
-
-Status: Complete. App metadata, package name, global header, navigation labels, README, and several top-level page labels have been reframed for Career Radar. The inherited methodology lint issue was fixed. Data/API behavior remains unchanged.
-
-Scope:
-
-- Rename package/app metadata from SignalPulse to Career Radar.
-- Rewrite README around the candidate-intelligence product story.
-- Update visible product language, nav labels, page headings, and methodology copy.
-- Fix inherited lint error in `app/methodology/page.tsx`.
-- Fix inherited LeadsTable malformed Actions cell if that component remains in use.
-- Decide whether to keep `CLAUDE.md` as historical context or replace it with `CODEX.md` as the active memory file.
-- Create `.env.local` locally from the existing Supabase project values when ready to run the app.
+Goal: make the copied app run locally and deploy separately.
 
 Exit criteria:
 
-- `npm run lint` passes.
-- `tsc --noEmit --incremental false` passes.
-- App can run locally against the current Supabase project.
-- No database or n8n changes yet.
+- Dependencies installed.
+- Lint/build pass.
+- Local Supabase env configured.
+- Vercel project exists for Career Radar.
 
-### Phase 2 - Candidate Profile Model In App Code
+### Phase 2 - Candidate Profile Experiment
 
-Goal: introduce candidate personalization without changing Supabase yet.
+Status: Complete, but superseded.
 
-Status: Complete. Candidate profiles are hardcoded in app code, selectable from the dashboard, persisted through the `profile` URL query param, and translated into profile-specific family/tag/score filters against the existing API routes.
+Goal: prove app-level personalization against existing job signals.
+
+Outcome:
+
+- Candidate profiles were implemented.
+- Profile-specific fit scoring was implemented.
+- This proved the data could be transformed into different interpretations.
+
+Current decision:
+
+- Do not persist candidate profiles.
+- Do not build Supabase schema around candidate personalization.
+- Candidate-profile code may be removed or repurposed during the MarketLens refactor.
+
+### Phase 3 - Candidate Fit Scoring Experiment
+
+Status: Complete, but superseded.
+
+Goal: score existing job signals for candidate-specific fit.
+
+Outcome:
+
+- Useful as proof that app-level derived scoring works.
+- Not the final product model.
+
+Current decision:
+
+- Replace candidate fit with market-signal aggregation and lens-based interpretation.
+
+### Phase 4 - MarketLens Product Reframe
+
+Status: Implemented locally.
+
+Goal: convert the app from candidate recommendations to labor-market intelligence.
 
 Scope:
 
-- Add TypeScript types for candidate profiles, candidate skills, preferences, target roles, and scoring weights.
-- Add three hardcoded demo profiles:
-  - Chase / AI Workflow Builder
-  - Finance Transformation Candidate
-  - Sales / GTM Candidate
-- Add a profile selector at the top-level app experience.
-- Persist selected profile in URL params or local state for demo reliability.
-- Make existing dashboard queries profile-aware at the client/app layer.
+- Rename/refocus visible product language around Market Briefing and labor-market signals.
+- Replace candidate tabs with market lens selector.
+- Update navigation to:
+  - Market Briefing
+  - Signals
+  - Emerging Roles
+  - Rising Skills & Tools
+  - Industries
+  - Companies
+  - About / Methodology
+- Rebuild homepage using the provided mockup as design direction.
+- Keep homepage simple and report-like.
+- Move raw tables/search/filtering to Signals.
 
 Exit criteria:
 
-- User can select any of the three profiles.
-- The selected profile changes visible labels, KPI counts, and ranking context.
-- No Supabase schema changes required yet.
+- The homepage clearly answers "what is changing in the labor market?"
+- The app no longer reads as a candidate-profile job recommender.
+- The design feels close to the provided MarketLens mockup.
+- No Supabase or n8n changes yet.
 
 Implementation notes:
 
-- Candidate profile types now live in `lib/types.ts`.
-- Demo profile definitions and profile-to-filter helpers live in `lib/candidateProfiles.ts`.
-- The selector UI lives in `components/CandidateProfileSelector.tsx`.
-- `app/page.tsx` applies selected profile filters to the existing `/api/signals` query layer.
-- `components/FilterSidebar.tsx` now accepts profile-specific default filters so reset actions keep the selected candidate lens.
+- `app/page.tsx` now renders the Market Briefing homepage.
+- `lib/marketLenses.ts` defines the app-level market lens system.
+- `lib/marketInsights.ts` derives briefing copy, roles to watch, skills moving up, losing-differentiation-alone signals, and industry readouts from existing Supabase-backed job signals.
+- Navigation now uses the MVP tabs: Market Briefing, Signals, Emerging Roles, Rising Skills & Tools, Industries, Companies, and About / Methodology.
+- The old candidate-era homepage UI components were removed from `components/`.
+- Secondary MVP pages currently exist as clean scaffolds for Phase 6.
 
-### Phase 3 - Candidate Fit Scoring Layer
+### Phase 5 - App-Level Market Lens Model
 
-Goal: turn existing job signals into candidate-specific recommendations.
-
-Status: Complete. The API now computes profile-aware fit scores and explanations in app code, and the primary jobs table ranks opportunities by candidate fit instead of legacy market score alone.
-
-Scope:
-
-- Build deterministic `fit_score` logic separate from old `intent_score` and `computed_score`.
-- Interpret `signal_tags.tech_stack` as skills/tools for matching.
-- Score jobs by:
-  - target role alignment
-  - current skill overlap
-  - desired skill growth
-  - missing skill severity
-  - seniority fit
-  - company/industry preference if available
-  - recency
-- Generate per-job explanations:
-  - why this fits
-  - what is missing
-  - how the candidate should position themselves
-- Replace the sales-leads table with candidate-centered job cards or a cleaner ranked list.
-
-Exit criteria:
-
-- Each demo profile produces a meaningfully different ranked job list.
-- Each ranked job has a clear explanation and skill-gap callout.
-- Current SignalPulse scoring remains available only as legacy/source context, not the primary UX.
-
-Implementation notes:
-
-- Candidate fit types now live in `lib/types.ts`.
-- Profile-specific role keywords, known tools, growth tools, and preferred seniority live in `lib/candidateProfiles.ts`.
-- Deterministic fit scoring lives in `lib/candidateFit.ts`.
-- `app/api/signals/route.ts` now accepts the active `profile` and returns fit-enriched jobs.
-- `components/LeadsTable.tsx` now ranks by candidate fit, shows fit explanations and likely gaps, and expands into a fit breakdown plus positioning hook.
-- Legacy market scoring remains visible as a secondary score for context, not the primary ranking signal.
-
-### Phase 4 - Career Dashboard UX
-
-Goal: replace the old sales dashboard with a compelling recruiter-demo experience.
+Goal: define lenses and derive first-pass insights from existing data.
 
 Scope:
 
-- Build the new primary layout around candidate outcomes:
-  - Career Briefing
-  - Best-Fit Jobs
-  - Skill Radar
-  - Company Radar
-  - Positioning Strategy
-  - Portfolio Recommendations
-  - Methodology
-- Add profile-specific KPI cards, such as:
-  - high-fit jobs
-  - strongest role cluster
-  - top missing skill
-  - companies accelerating
-- Add skill demand sections:
-  - strengths showing up in the market
-  - recurring gaps
-  - emerging skills to learn
-- Add company radar based on profile-relevant hiring patterns.
-- Keep visual design polished but quieter and more decision-oriented than the current leads table.
+- Add market lens types and definitions in app code.
+- Map existing job families/tags/titles into lens scopes.
+- Derive first-pass sections from existing data:
+  - roles to watch
+  - skills moving up
+  - tools moving up
+  - less differentiating alone
+  - industry/company readouts
+- Use deterministic aggregation before adding generated summaries.
 
 Exit criteria:
 
-- A recruiter can understand the product in under 60 seconds.
-- The Chase profile tells a strong personal career narrative.
-- The other two profiles prove the system adapts beyond one hardcoded use case.
+- Selecting a lens changes the briefing and visible market signals.
+- Existing Supabase data powers the first version.
+- No schema changes required yet.
 
-### Phase 5 - Additive Supabase Foundation
+### Phase 6 - MVP Pages
 
-Goal: start persisting candidate/profile concepts without breaking the original SignalPulse data model.
+Goal: build the MVP information architecture beyond the homepage.
+
+Pages:
+
+- Signals
+- Emerging Roles
+- Rising Skills & Tools
+- Industries
+- Companies
+- About / Methodology
+
+Exit criteria:
+
+- Homepage stays simple.
+- Detail/exploration moves to secondary pages.
+- Every insight page can link back to evidence from postings.
+
+### Phase 7 - Enrichment Contract And Schema Proposal
+
+Goal: define the durable labor-market enrichment model before touching production data.
 
 Scope:
 
-- Create migrations instead of editing `schema.sql` directly.
-- Add tables only if app-code profiles are proven useful:
-  - `candidate_profiles`
-  - `candidate_profile_skills`
-  - `candidate_preferences`
-  - optional `career_insights`
-  - optional `candidate_job_matches`
-- Add seed data for the three demo profiles.
-- Add secondary indexes for existing dashboard/query paths.
-- Tighten grants for public read-only posture.
-- Restrict `refresh_weekly_snapshots()` RPC access away from `anon`.
+- Create a documented JSON schema for the new OpenAI extraction output.
+- Create Supabase migration proposals for additive fields/tables.
+- Decide whether to store enriched fields on `job_signals` or in a related `labor_market_signals` table.
+- Add indexes for likely query paths.
+- Plan grant/RLS tightening.
 
 Exit criteria:
 
-- Migrations can be reviewed before applying to the shared Supabase project.
-- Existing SignalPulse tables/routes remain backward-compatible.
-- Candidate profile data can be loaded from Supabase or seeded safely.
+- Migration SQL is reviewable.
+- Existing SignalPulse-compatible tables remain intact.
+- No destructive schema changes.
 
-### Phase 6 - Pipeline Reframe
+### Phase 8 - n8n / OpenAI Pipeline Reframe
 
-Goal: adjust n8n/OpenAI ingestion so future data is better suited to career intelligence.
+Goal: point ingestion at labor-market intelligence instead of sales intent.
 
 Scope:
 
-- Keep existing workflow exports as backups before editing.
-- Fix unsafe company-name SQL interpolation with parameter binding.
-- Broaden SerpApi queries toward candidate-relevant market intelligence.
-- Update OpenAI prompt to extract:
-  - role category
-  - seniority
-  - hard skills
-  - tools/platforms
-  - nice-to-have skills
-  - remote/location clues
-  - employment type where available
-  - candidate-relevant learning signals
-- Preserve existing `job_signals` compatibility or add new fields additively.
-- Add basic error handling/observability for SerpApi, OpenAI, and Supabase failures.
+- Backup workflow exports.
+- Replace old OpenAI prompt with labor-market intelligence prompt.
+- Broaden SerpApi search queries across role families.
+- Fix unsafe company-name SQL interpolation.
+- Write new extracted fields to additive schema.
+- Add basic error visibility.
 
 Exit criteria:
 
-- New workflow can be tested manually without corrupting existing data.
-- Existing historical data remains usable.
-- New records are richer for candidate-fit scoring.
+- New workflow can run manually.
+- New records include role/skill/tool/company-type intelligence.
+- Old data remains usable.
 
-### Phase 7 - Personalized Onboarding
+### Phase 9 - Aggregation And Weekly Briefings
 
-Goal: let a user generate their own candidate profile through guided questions.
+Goal: turn individual job postings into weekly intelligence.
 
 Scope:
 
-- Build onboarding questionnaire.
-- Convert answers into a candidate profile object.
-- Let users compare generated profile against demo profiles.
-- Optionally persist custom profiles in Supabase.
-- Tailor dashboard output to the generated profile.
+- Aggregate by lens, role cluster, skill, tool, company, and industry.
+- Generate weekly executive briefing summaries.
+- Track rising/table-stakes/less-differentiating-alone patterns.
+- Store or cache weekly briefing snapshots.
 
 Exit criteria:
 
-- A new user can answer questions and receive a tailored dashboard.
-- The generated profile affects ranking, gaps, briefing, and recommendations.
+- Market Briefing is based on aggregated signals, not one-off examples.
+- Weekly readouts can be compared over time.
 
-### Phase 8 - Deployment And Cutover
+### Phase 10 - Demo Polish And Portfolio Story
 
-Goal: deploy Career Radar without accidentally breaking the existing SignalPulse production experience.
+Goal: make the product demo crisp for recruiters and portfolio viewers.
 
 Scope:
 
-- Decide between:
-  - new Vercel project using same Supabase project, or
-  - existing Vercel project with controlled preview/production cutover.
-- Configure env vars in the chosen Vercel project.
-- Run production build and smoke test.
-- Validate public read-only behavior.
-- Decide whether/when Career Radar replaces `signalpulse-six.vercel.app`.
+- Polish the MarketLens visual identity.
+- Update README around labor-market intelligence.
+- Update methodology page.
+- Prepare demo script:
+  - ingestion pipeline
+  - OpenAI extraction
+  - Supabase model
+  - market lens aggregation
+  - evidence-backed insights
 
 Exit criteria:
 
-- Career Radar has a stable deployed URL.
-- Supabase writes are still restricted to service/admin paths.
-- Original SignalPulse deployment is either preserved or intentionally replaced.
-
-### Phase 9 - Demo Polish And Portfolio Story
-
-Goal: make the project tell a sharp story for recruiters.
-
-Scope:
-
-- Add a guided demo path using the Chase profile.
-- Add a concise methodology page explaining ingestion, enrichment, scoring, and personalization.
-- Add sample screenshots or a short walkthrough script if useful.
-- Update README with architecture, tradeoffs, and what changed from SignalPulse.
-- Prepare talking points:
-  - data pipeline
-  - LLM extraction
-  - personalization layer
-  - schema design
-  - public read-only security model
-  - product pivot decision
-
-Exit criteria:
-
-- The demo explains both the engineering system and the product value.
-- The app feels like a finished career-intelligence product, not a renamed sales dashboard.
+- The product reads as a finished intelligence MVP.
+- The engineering story is easy to explain.
+- The demo is not dependent on the old SignalPulse or candidate-profile framing.
 
 ---
 
-## 9.1 Immediate Next Phase
+## 9. Immediate Next Step
 
-Next recommended work when implementation begins:
+Review Phase 4 visually in the browser, then start Phase 5.
 
-1. Phase 4: build the broader career dashboard around the new fit layer.
-2. Add candidate-native sections for skill demand, recurring gaps, and positioning strategy.
-3. Only then consider Phase 5 additive Supabase persistence for candidate concepts.
+Phase 5 should:
 
-Do not start Supabase migrations or n8n workflow edits until the profile-aware UI proves the pivot.
+1. Tighten market lens definitions.
+2. Improve deterministic aggregation logic.
+3. Make the selected lens affect the detail pages.
+4. Keep raw evidence and filters on the Signals page, not the homepage.
+5. Continue avoiding Supabase and n8n changes until the app-level model feels right.
 
-## 10. Current Known Validation State
+---
 
-In `career-radar`:
+## 10. Validation State
 
-- `npm install`: completed
-- `npm audit`: 0 vulnerabilities
-- `tsc --noEmit --incremental false`: passes
-- `npm run lint`: passes
-- `npm run build`: passes
+Known validation after Phase 4:
 
-To run locally, create `C:\Users\chase\Documents\career-radar\.env.local` with:
+- `npm install`: completed.
+- `npm audit`: 0 vulnerabilities.
+- `tsc --noEmit --incremental false`: passes.
+- `npm run lint`: passes.
+- `npm run build`: passes.
+- Local app has been running at `http://localhost:3004`.
+- `http://localhost:3004/` returns `200 OK`.
+- MVP tab routes return `200 OK`: `/signals`, `/emerging-roles`, `/skills-tools`, `/industries`, `/companies`, `/methodology`.
+- `/api/signals?min_score=1` returns `200 OK` and existing Supabase-backed job signal data.
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-SUPABASE_SERVICE_ROLE_KEY=...
-```
-
-Then run:
+Run after each implementation phase:
 
 ```powershell
-npm run dev
+npm run lint
+npm run build
+```
+
+Then smoke test:
+
+```powershell
+Invoke-WebRequest -Uri 'http://localhost:3004' -UseBasicParsing -TimeoutSec 15
 ```
 
 ---
 
 ## 11. Working Rules For Codex
 
-- Work in `C:\Users\chase\Documents\career-radar` unless the user explicitly says otherwise.
-- Do not modify `C:\Users\chase\Documents\signalpulse` unless explicitly requested.
-- Treat Supabase changes as additive until the original app is retired.
-- Prefer migrations over editing schema dumps manually.
-- Do not commit secrets or local runtime artifacts.
-- Keep the product centered on candidate outcomes, not generic market charts.
-- Build demo reliability first: three profiles should always produce a compelling walkthrough.
+- Work in `C:\Users\chase\Documents\career-radar` unless explicitly told otherwise.
+- Do not modify `C:\Users\chase\Documents\signalpulse`.
+- Keep Supabase changes additive until the old app is retired.
+- Prefer migrations over manual schema edits.
+- Do not commit secrets or runtime artifacts.
+- Keep homepage simple, clear, and report-like.
+- Separate facts extracted from postings from inferred market interpretation.
+- Keep evidence accessible through the Signals page.
 
 ---
 
 ## 12. Open Questions
 
-- Will Career Radar eventually replace the existing Vercel production deployment, or live as a second Vercel project first?
-- Should candidate profiles be stored in Supabase immediately, or hardcoded for the first demo milestone?
-- Which three exact candidate profiles should ship in the polished demo?
-- How much of the existing historical job data is useful for the new profile-matching direction?
-- Should the ingestion pipeline broaden now, or after the UI proves the pivot?
-
-
-
+- Should the visible brand remain Career Radar or become MarketLens?
+- Which exact role-family lenses should ship in V1?
+- Should the first Market Briefing use deterministic summaries only, or include generated copy from app-level aggregation?
+- Should new enrichment fields live on `job_signals` or in a new related table?
+- How broad should the next n8n query set be for the first labor-market ingestion test?

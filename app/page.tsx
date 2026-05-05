@@ -1,408 +1,242 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CandidateProfileId, DashboardFilters, JobSignal } from '@/lib/types';
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import type { JobSignal } from '@/lib/types';
 import {
-  buildCandidateProfileFilters,
-  CANDIDATE_PROFILES,
-  DEFAULT_CANDIDATE_PROFILE_ID,
-  getCandidateProfile,
-  getMatchingProfileTags,
-  resolveCandidateProfileId,
-} from '@/lib/candidateProfiles';
-import { mean } from '@/lib/utils';
-import FilterSidebar from '@/components/FilterSidebar';
-import LeadsTable from '@/components/LeadsTable';
-import TrendChart from '@/components/TrendChart';
-import KpiCard from '@/components/KpiCard';
-import CandidateProfileSelector from '@/components/CandidateProfileSelector';
+  DEFAULT_MARKET_LENS_ID,
+  getMarketLens,
+  MARKET_LENSES,
+  resolveMarketLensId,
+  type MarketLensId,
+} from '@/lib/marketLenses';
+import { buildMarketBriefing, formatBriefingDate } from '@/lib/marketInsights';
 
-// ── Query string builder ──────────────────────────────────────────────────────
-function buildQueryString(filters: DashboardFilters, profileId: CandidateProfileId): string {
-  const params = new URLSearchParams();
-  params.set('profile', profileId);
-  params.set('min_score', String(filters.min_intent_score));
-  if (filters.hot_leads_only) params.set('hot', 'true');
-  if (filters.search) params.set('search', filters.search);
-  filters.job_families.forEach((f) => params.append('family', f));
-  filters.tags.forEach((t) => params.append('tag', t));
-  return params.toString();
+function readLensFromUrl(): MarketLensId {
+  if (typeof window === 'undefined') return DEFAULT_MARKET_LENS_ID;
+  return resolveMarketLensId(new URLSearchParams(window.location.search).get('lens'));
 }
 
-function mostCommonLabel(values: string[]): string {
-  if (values.length === 0) return 'None';
-
-  const counts = values.reduce<Record<string, number>>((acc, value) => {
-    acc[value] = (acc[value] ?? 0) + 1;
-    return acc;
-  }, {});
-
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'None';
+function writeLensToUrl(lensId: MarketLensId) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('lens', lensId);
+  window.history.replaceState(null, '', `${url.pathname}?${url.searchParams.toString()}`);
 }
 
-// ── KPI skeleton ──────────────────────────────────────────────────────────────
-function KpiSkeleton() {
-  return (
-    <>
-      <style>{`@keyframes kpi-pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }`}</style>
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div
-          key={i}
-          style={{
-            flex: 1,
-            minWidth: 0,
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 10,
-            padding: '20px 24px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
-            animation: `kpi-pulse 1.5s ease-in-out ${i * 100}ms infinite`,
-          }}
-        >
-          <div style={{ height: 10, width: 80, borderRadius: 4, background: 'var(--bg-elevated)' }} />
-          <div style={{ height: 28, width: 60, borderRadius: 4, background: 'var(--bg-elevated)' }} />
-        </div>
-      ))}
-    </>
-  );
-}
-
-// ── Error card ────────────────────────────────────────────────────────────────
 function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div
-      style={{
-        background: 'rgba(239,68,68,0.08)',
-        border: '1px solid rgba(239,68,68,0.25)',
-        borderRadius: 10,
-        padding: '16px 20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-      }}
-    >
-      <span style={{ color: '#fca5a5', fontSize: 13 }}>
-        ⚠ Failed to load signals — {message}
-      </span>
-      <button
-        onClick={onRetry}
-        style={{
-          background: 'transparent',
-          border: '1px solid rgba(239,68,68,0.4)',
-          borderRadius: 6,
-          color: '#fca5a5',
-          fontSize: 12,
-          padding: '5px 12px',
-          cursor: 'pointer',
-          flexShrink: 0,
-        }}
-      >
-        Retry
-      </button>
+    <div className="error-banner">
+      <span>Failed to load market signals: {message}</span>
+      <button type="button" onClick={onRetry}>Retry</button>
     </div>
   );
 }
 
-// ── KPI icons (inline SVG) ────────────────────────────────────────────────────
-const IconSignals = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-    <polyline points="1,8 4,8 5.5,3 7.5,13 9.5,5 11,8 15,8"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-const IconHot = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-    <path d="M8 14s-5-3-5-7a5 5 0 0110 0c0 4-5 7-5 7z"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    <circle cx="8" cy="7" r="1.5" fill="currentColor"/>
-  </svg>
-);
-const IconScore = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-    <polygon points="8,2 10,6 14,6.5 11,9.5 11.8,13.5 8,11.5 4.2,13.5 5,9.5 2,6.5 6,6"
-      stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-  </svg>
-);
-const IconCompanies = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-    <rect x="2" y="7" width="5" height="8" rx="1" stroke="currentColor" strokeWidth="1.5"/>
-    <rect x="9" y="3" width="5" height="12" rx="1" stroke="currentColor" strokeWidth="1.5"/>
-    <line x1="6" y1="11" x2="9" y2="11" stroke="currentColor" strokeWidth="1.5"/>
-  </svg>
-);
-
-function readProfileIdFromUrl(): CandidateProfileId {
-  if (typeof window === 'undefined') return DEFAULT_CANDIDATE_PROFILE_ID;
-  const params = new URLSearchParams(window.location.search);
-  return resolveCandidateProfileId(params.get('profile'));
-}
-
-function writeProfileIdToUrl(profileId: CandidateProfileId) {
-  const url = new URL(window.location.href);
-  url.searchParams.set('profile', profileId);
-  window.history.replaceState(null, '', `${url.pathname}?${url.searchParams.toString()}`);
-}
-
-// ── Page ──────────────────────────────────────────────────────────────────────
-export default function DashboardPage() {
-  const [profileId, setProfileId] = useState<CandidateProfileId>(DEFAULT_CANDIDATE_PROFILE_ID);
-  const selectedProfile = useMemo(() => getCandidateProfile(profileId), [profileId]);
-  const [filters, setFilters] = useState<DashboardFilters>(() =>
-    buildCandidateProfileFilters(getCandidateProfile(DEFAULT_CANDIDATE_PROFILE_ID), [])
+function LoadingBriefing() {
+  return (
+    <main className="market-shell">
+      <div className="market-page">
+        <div className="briefing-skeleton is-title" />
+        <div className="briefing-skeleton" />
+        <div className="briefing-skeleton" />
+        <div className="briefing-skeleton" />
+      </div>
+    </main>
   );
+}
+
+export default function MarketBriefingPage() {
+  const [lensId, setLensId] = useState<MarketLensId>(DEFAULT_MARKET_LENS_ID);
   const [signals, setSignals] = useState<JobSignal[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
-  // Sidebar closed by default on mobile; open on desktop
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const profileDefaultFilters = useMemo(
-    () => buildCandidateProfileFilters(selectedProfile, availableTags),
-    [selectedProfile, availableTags]
-  );
 
-  // Detect mobile on mount and close sidebar by default
-  useEffect(() => {
-    if (window.innerWidth < 768) setSidebarOpen(false);
-  }, []);
+  const selectedLens = useMemo(() => getMarketLens(lensId), [lensId]);
+  const briefing = useMemo(() => buildMarketBriefing(signals, selectedLens), [signals, selectedLens]);
 
-  useEffect(() => {
-    const syncProfileFromUrl = () => {
-      const nextProfileId = readProfileIdFromUrl();
-      const params = new URLSearchParams(window.location.search);
-      const search = params.get('search')?.trim() ?? '';
-
-      setProfileId(nextProfileId);
-      if (search) {
-        setFilters((current) => ({ ...current, search }));
-      }
-    };
-
-    syncProfileFromUrl();
-    window.addEventListener('popstate', syncProfileFromUrl);
-    return () => window.removeEventListener('popstate', syncProfileFromUrl);
-  }, []);
-
-  // Fetch distinct tags once on mount — not filter-dependent
-  useEffect(() => {
-    fetch('/api/tags')
-      .then((r) => r.json())
-      .then((d: { tags?: string[] }) => setAvailableTags(d.tags ?? []))
-      .catch((err) => console.error('Failed to fetch tags:', err));
-  }, []);
-
-  useEffect(() => {
-    setFilters((current) =>
-      ({ ...profileDefaultFilters, search: current.search })
-    );
-  }, [profileDefaultFilters]);
-
-  // Fetch signals whenever filters change
-  const fetchSignals = useCallback(async (f: DashboardFilters, activeProfileId: CandidateProfileId) => {
+  async function fetchSignals() {
     setLoading(true);
     setFetchError(null);
+
     try {
-      const qs = buildQueryString(f, activeProfileId);
-      const res = await fetch(`/api/signals?${qs}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as { signals: JobSignal[]; count: number; hot_leads_total: number };
+      const response = await fetch('/api/signals?min_score=1');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const data = (await response.json()) as { signals?: JobSignal[] };
       setSignals(data.signals ?? []);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      console.error('Failed to fetch signals:', msg);
-      setFetchError(msg);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Failed to fetch market signals:', message);
+      setFetchError(message);
       setSignals([]);
     } finally {
       setLoading(false);
     }
+  }
+
+  useEffect(() => {
+    const syncLens = () => setLensId(readLensFromUrl());
+    syncLens();
+    window.addEventListener('popstate', syncLens);
+    return () => window.removeEventListener('popstate', syncLens);
   }, []);
 
   useEffect(() => {
-    fetchSignals(filters, profileId);
-  }, [filters, fetchSignals, profileId]);
-
-  const matchedProfileTags = useMemo(
-    () => getMatchingProfileTags(selectedProfile, availableTags),
-    [selectedProfile, availableTags]
-  );
-
-  const handleProfileChange = useCallback((nextProfileId: CandidateProfileId) => {
-    setProfileId(nextProfileId);
-    writeProfileIdToUrl(nextProfileId);
+    fetchSignals();
   }, []);
 
-  // ── KPI values (computed client-side, no extra fetch) ──────────────────────
-  const kpi = useMemo(() => ({
-    highFitJobs:  signals.filter((s) => (s.fit_score ?? 0) >= 8).length,
-    avgFitScore:  mean(signals.map((s) => s.fit_score ?? 0)),
-    topMissingSkill: mostCommonLabel(signals.flatMap((s) => s.missing_skills ?? [])),
-    companies:    new Set(signals.map((s) => s.company_name)).size,
-    // Most-recent created_at — signals are already ordered DESC from the API
-    lastRefreshed:
-      signals.length > 0
-        ? [...signals].sort((a, b) => b.created_at.localeCompare(a.created_at))[0]?.created_at ?? null
-        : null,
-  }), [signals]);
-
-  // ── TrendChart data ────────────────────────────────────────────────────────
-  const trendData = useMemo(() => {
-    const counts: Record<string, number> = {};
-    signals.forEach((s) => {
-      if (s.job_family) counts[s.job_family] = (counts[s.job_family] ?? 0) + 1;
-    });
-    return Object.entries(counts)
-      .map(([family, count]) => ({ family, count }))
-      .sort((a, b) => b.count - a.count);
-  }, [signals]);
-
-  function handleReset() {
-    setFilters(profileDefaultFilters);
+  function handleLensChange(nextLensId: MarketLensId) {
+    setLensId(nextLensId);
+    writeLensToUrl(nextLensId);
   }
 
+  if (loading) return <LoadingBriefing />;
+
   return (
-    <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>
-
-      {/* ── Mobile overlay — closes sidebar when tapping outside ─────────── */}
-      <div
-        className={`mobile-overlay${sidebarOpen ? ' is-open' : ''}`}
-        onClick={() => setSidebarOpen(false)}
-        aria-hidden="true"
-      />
-
-      {/* ── Filter sidebar ─────────────────────────────────────────────────
-          On mobile: fixed-position overlay controlled by sidebarOpen.
-          On desktop: always visible in flow. ─────────────────────────── */}
-      <div
-        style={{
-          position: 'relative',
-          zIndex: 40,
-          transition: 'transform 200ms ease',
-        }}
-        // Mobile: slide sidebar in/out. Desktop: no transform needed.
-        // We handle visibility via the FilterSidebar's own width on desktop
-        // and via fixed positioning on mobile (handled by CSS class below).
-      >
-        <div
-          className={sidebarOpen ? 'sidebar-visible' : 'sidebar-hidden'}
-          style={{ height: '100%' }}
-        >
-          <FilterSidebar
-            filters={filters}
-            onChange={(f) => {
-              setFilters(f);
-              // Auto-close sidebar on mobile after a filter change
-              if (window.innerWidth < 768) setSidebarOpen(false);
-            }}
-            defaultFilters={profileDefaultFilters}
-            availableTags={availableTags}
-            signals={signals}
-          />
-        </div>
-      </div>
-
-      {/* ── Main content ───────────────────────────────────────────────────── */}
-      <main
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '20px 24px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 20,
-          minWidth: 0,
-        }}
-      >
-        {/* Mobile: filter toggle button */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button
-            className="sidebar-toggle"
-            onClick={() => setSidebarOpen((v) => !v)}
-            aria-label="Toggle filters"
-          >
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-              <line x1="1" y1="3" x2="12" y2="3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              <line x1="3" y1="6.5" x2="10" y2="6.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              <line x1="5" y1="10" x2="8" y2="10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-            Filters
-          </button>
-        </div>
-
-        <CandidateProfileSelector
-          profiles={CANDIDATE_PROFILES}
-          selectedProfile={selectedProfile}
-          matchedTags={matchedProfileTags}
-          onSelect={handleProfileChange}
-        />
-
-        {/* KPI row — 4-across desktop, 2×2 mobile */}
-        <div className="kpi-grid" style={{ flexShrink: 0 }}>
-          {loading ? (
-            <KpiSkeleton />
-          ) : (
-            <>
-              <KpiCard label="High-Fit Jobs" value={kpi.highFitJobs}               icon={<IconSignals />}   delay={0} subtitle={selectedProfile.short_label} />
-              <KpiCard label="Avg Fit Score" value={kpi.avgFitScore.toFixed(1)}    icon={<IconHot />}       delay={100} subtitle="candidate-specific ranking" />
-              <KpiCard label="Top Missing Skill" value={kpi.topMissingSkill}       icon={<IconScore />}     delay={200} />
-              <KpiCard label="Relevant Companies" value={kpi.companies}            icon={<IconCompanies />} delay={300} />
-            </>
-          )}
-        </div>
-
-        {/* Last-refreshed status — tells sales reps the data is current */}
-        {!loading && kpi.lastRefreshed && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              fontSize: 11,
-              color: 'var(--text-muted)',
-              marginTop: -8, // tuck closer under KPI cards
-            }}
-          >
-            <span style={{ color: '#10b981', fontSize: 8 }}>●</span>
-            <span>
-              Last signal:{' '}
-              <span style={{ fontFamily: 'var(--font-dm-mono), monospace', color: 'var(--text-secondary)' }}>
-                {new Date(kpi.lastRefreshed).toLocaleDateString('en-US', {
-                  month: 'short', day: 'numeric',
-                })}{' '}
-                at{' '}
-                {new Date(kpi.lastRefreshed).toLocaleTimeString('en-US', {
-                  hour: 'numeric', minute: '2-digit', hour12: true,
-                })}
-              </span>
-              {' '}· Refreshes daily at 6:00 AM
-            </span>
+    <main className="market-shell">
+      <div className="market-page">
+        <section className="briefing-masthead">
+          <div>
+            <h1>Market Briefing</h1>
+            <p>A weekly readout on how AI, automation, and software tools are reshaping roles, skills, and hiring demand.</p>
+            <div className="briefing-update">
+              <span>Updated {formatBriefingDate(briefing.updatedAt)}</span>
+              <span>{briefing.lensSignals.length.toLocaleString()} postings analyzed</span>
+            </div>
           </div>
-        )}
 
-        {/* Error banner */}
-        {fetchError && (
-          <ErrorBanner message={fetchError} onRetry={() => fetchSignals(filters, profileId)} />
-        )}
+          <label className="lens-select">
+            <span>Lens</span>
+            <select
+              value={lensId}
+              onChange={(event) => handleLensChange(resolveMarketLensId(event.target.value))}
+            >
+              {MARKET_LENSES.map((lens) => (
+                <option key={lens.id} value={lens.id}>
+                  {lens.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </section>
 
-        {/* Leads table — flexShrink:0 prevents the flex parent from squishing
-            the table to fit the chart; main scrolls instead */}
-        <div style={{ flexShrink: 0 }}>
-          <LeadsTable
-            signals={signals}
-            loading={loading}
-            onReset={handleReset}
-            profileLabel={selectedProfile.short_label}
-          />
-        </div>
+        {fetchError && <ErrorBanner message={fetchError} onRetry={fetchSignals} />}
 
-        {/* Trend chart — below the fold; scroll down to see it */}
-        <div style={{ flexShrink: 0 }}>
-          <TrendChart data={trendData} />
-        </div>
-      </main>
-    </div>
+        <section className="executive-briefing" aria-label="Executive briefing">
+          <div className="section-heading">
+            <h2>Executive Briefing</h2>
+          </div>
+          <p>{briefing.executiveSummary}</p>
+
+          <div className="briefing-callouts">
+            <div>
+              <span className="callout-dot" />
+              <strong>Emerging:</strong>
+              <p>{briefing.emerging.join(', ') || 'Role clusters still forming'}</p>
+            </div>
+            <div>
+              <span className="callout-arrow">↗</span>
+              <strong>Rising:</strong>
+              <p>{briefing.rising.join(', ') || 'Tool demand still forming'}</p>
+            </div>
+            <div>
+              <span className="callout-eye">◉</span>
+              <strong>Watch:</strong>
+              <p>{briefing.watch.join(', ') || 'No watch signal yet'}</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="key-signals" aria-label="Key market signals">
+          <div className="section-heading">
+            <h2>Key Market Signals</h2>
+          </div>
+
+          <div className="signal-layout">
+            {briefing.keySignals.map((signal, index) => (
+              <article
+                key={signal.title}
+                className={`signal-card signal-${signal.tone}${index === 0 ? ' is-large' : ''}`}
+              >
+                <div className="signal-icon" aria-hidden="true">
+                  {index === 0 ? '⌁' : index === 1 ? '▣' : '◌'}
+                </div>
+                <div>
+                  <h3>{signal.title}</h3>
+                  <p>{signal.body}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="movement-section" aria-label="Market movement snapshot">
+          <div className="section-heading">
+            <h2>Market Movement Snapshot</h2>
+            <p>A quick scan of roles, skills, and market shifts.</p>
+          </div>
+
+          <div className="movement-grid">
+            <div>
+              <h3>Roles to Watch</h3>
+              <ul>
+                {briefing.rolesToWatch.map((role) => <li key={role}>{role}</li>)}
+              </ul>
+              <Link href={`/emerging-roles?lens=${lensId}`}>View details</Link>
+            </div>
+            <div>
+              <h3>Skills Moving Up</h3>
+              <ul>
+                {briefing.skillsMovingUp.map((skill) => <li key={skill}>{skill}</li>)}
+              </ul>
+              <Link href={`/skills-tools?lens=${lensId}`}>View details</Link>
+            </div>
+            <div>
+              <h3>Losing Differentiation Alone</h3>
+              <ul>
+                {briefing.losingDifferentiation.map((skill) => <li key={skill}>{skill}</li>)}
+              </ul>
+              <Link href={`/skills-tools?lens=${lensId}`}>View details</Link>
+            </div>
+          </div>
+        </section>
+
+        <section className="bottom-readout" aria-label="Industry and worker readout">
+          <article>
+            <div className="section-heading">
+              <h2>Industry Readout</h2>
+            </div>
+            <div className="industry-table">
+              <div className="industry-row is-header">
+                <span>Segment</span>
+                <span>Strongest Signal</span>
+              </div>
+              {briefing.industryReadout.map((row) => (
+                <div key={row.segment} className="industry-row">
+                  <span>{row.segment}</span>
+                  <span>{row.signal}</span>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article>
+            <div className="section-heading">
+              <h2>What This Means for Workers</h2>
+            </div>
+            <p>{briefing.workerMeaning}</p>
+            <div className="worker-links">
+              <Link href={`/industries?lens=${lensId}`}>For {selectedLens.workerPath}</Link>
+              <Link href={`/signals?lens=${lensId}`}>View source signals</Link>
+            </div>
+          </article>
+        </section>
+
+        <section className="evidence-cta" aria-label="Evidence call to action">
+          <span>Want to verify the signals?</span>
+          <Link href={`/signals?lens=${lensId}`}>View Evidence</Link>
+        </section>
+      </div>
+    </main>
   );
 }
