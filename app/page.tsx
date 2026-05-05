@@ -6,11 +6,11 @@ import type { JobSignal } from '@/lib/types';
 import {
   DEFAULT_MARKET_LENS_ID,
   getMarketLens,
-  MARKET_LENSES,
   resolveMarketLensId,
   type MarketLensId,
 } from '@/lib/marketLenses';
 import { buildMarketBriefing, formatBriefingDate } from '@/lib/marketInsights';
+import MarketLensSelect from '@/components/MarketLensSelect';
 
 function readLensFromUrl(): MarketLensId {
   if (typeof window === 'undefined') return DEFAULT_MARKET_LENS_ID;
@@ -105,19 +105,7 @@ export default function MarketBriefingPage() {
             </div>
           </div>
 
-          <label className="lens-select">
-            <span>Lens</span>
-            <select
-              value={lensId}
-              onChange={(event) => handleLensChange(resolveMarketLensId(event.target.value))}
-            >
-              {MARKET_LENSES.map((lens) => (
-                <option key={lens.id} value={lens.id}>
-                  {lens.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <MarketLensSelect value={lensId} onChange={handleLensChange} />
         </section>
 
         {fetchError && <ErrorBanner message={fetchError} onRetry={fetchSignals} />}
@@ -135,12 +123,12 @@ export default function MarketBriefingPage() {
               <p>{briefing.emerging.join(', ') || 'Role clusters still forming'}</p>
             </div>
             <div>
-              <span className="callout-arrow">↗</span>
+              <span className="callout-arrow">Up</span>
               <strong>Rising:</strong>
               <p>{briefing.rising.join(', ') || 'Tool demand still forming'}</p>
             </div>
             <div>
-              <span className="callout-eye">◉</span>
+              <span className="callout-eye">Watch</span>
               <strong>Watch:</strong>
               <p>{briefing.watch.join(', ') || 'No watch signal yet'}</p>
             </div>
@@ -159,7 +147,7 @@ export default function MarketBriefingPage() {
                 className={`signal-card signal-${signal.tone}${index === 0 ? ' is-large' : ''}`}
               >
                 <div className="signal-icon" aria-hidden="true">
-                  {index === 0 ? '⌁' : index === 1 ? '▣' : '◌'}
+                  {index === 0 ? 'AI' : index === 1 ? 'CO' : 'SK'}
                 </div>
                 <div>
                   <h3>{signal.title}</h3>

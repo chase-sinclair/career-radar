@@ -13,6 +13,19 @@ export interface IndustryReadout {
   signal: string;
 }
 
+export interface CountItem {
+  label: string;
+  count: number;
+}
+
+export interface CompanySignalSummary {
+  company: string;
+  count: number;
+  topRole: string;
+  topTools: string[];
+  latestSignal: string | null;
+}
+
 export interface MarketBriefing {
   lensSignals: JobSignal[];
   updatedAt: string | null;
@@ -66,7 +79,7 @@ function titleCase(value: string): string {
     .join(' ');
 }
 
-function normalizeRoleTitle(title: string): string {
+export function normalizeRoleTitle(title: string): string {
   const cleaned = title
     .replace(/\([^)]*\)/g, ' ')
     .replace(/\[[^\]]*\]/g, ' ')
@@ -82,7 +95,7 @@ function normalizeRoleTitle(title: string): string {
   return titleCase(words.slice(0, 4).join(' ') || cleaned);
 }
 
-function countValues(values: string[]): Array<{ label: string; count: number }> {
+export function countValues(values: string[]): CountItem[] {
   const counts = values.reduce<Record<string, number>>((acc, rawValue) => {
     const value = rawValue.trim();
     if (!value) return acc;
@@ -95,27 +108,42 @@ function countValues(values: string[]): Array<{ label: string; count: number }> 
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
 }
 
-function topRoles(signals: JobSignal[]): string[] {
+export function getTopRoles(signals: JobSignal[], limit = 5): CountItem[] {
   return countValues(signals.map((signal) => normalizeRoleTitle(signal.job_title)))
     .filter((item) => item.label.length > 3)
-    .slice(0, 5)
-    .map((item) => item.label);
+    .slice(0, limit);
 }
 
-function topTags(signals: JobSignal[]): string[] {
+export function getTopTags(signals: JobSignal[], limit = 8): CountItem[] {
   return countValues(signals.flatMap((signal) => signal.tech_stack ?? []))
-    .slice(0, 8)
-    .map((item) => item.label);
+    .slice(0, limit);
 }
 
-function topCompanies(signals: JobSignal[]): string[] {
+export function getTopCompanies(signals: JobSignal[], limit = 5): CountItem[] {
   return countValues(signals.map((signal) => signal.company_name))
-    .slice(0, 5)
-    .map((item) => item.label);
+    .slice(0, limit);
+}
+
+export function summarizeCompanies(signals: JobSignal[], limit = 10): CompanySignalSummary[] {
+  const grouped = signals.reduce<Record<string, JobSignal[]>>((acc, signal) => {
+    acc[signal.company_name] = [...(acc[signal.company_name] ?? []), signal];
+    return acc;
+  }, {});
+
+  return Object.entries(grouped)
+    .map(([company, rows]) => ({
+      company,
+      count: rows.length,
+      topRole: getTopRoles(rows, 1)[0]?.label ?? 'Role cluster forming',
+      topTools: getTopTags(rows, 4).map((item) => item.label),
+      latestSignal: rows.map((row) => row.created_at).sort((a, b) => b.localeCompare(a))[0] ?? null,
+    }))
+    .sort((a, b) => b.count - a.count || a.company.localeCompare(b.company))
+    .slice(0, limit);
 }
 
 function inferIndustryReadout(signals: JobSignal[]): IndustryReadout[] {
-  const tags = topTags(signals).join(', ') || 'workflow and systems fluency';
+  const tags = getTopTags(signals).map((item) => item.label).join(', ') || 'workflow and systems fluency';
 
   return [
     { segment: 'Startups', signal: `Builders who can connect tools and move quickly (${tags.split(', ')[0] ?? 'automation'})` },
@@ -153,9 +181,9 @@ function inferKeySignals(lens: MarketLens, roles: string[], skills: string[], co
 export function buildMarketBriefing(signals: JobSignal[], lens: MarketLens): MarketBriefing {
   const lensSignals = filterSignalsForLens(signals, lens);
   const scopedSignals = lensSignals.length > 0 ? lensSignals : signals;
-  const roles = topRoles(scopedSignals);
-  const skills = topTags(scopedSignals);
-  const companies = topCompanies(scopedSignals);
+  const roles = getTopRoles(scopedSignals).map((item) => item.label);
+  const skills = getTopTags(scopedSignals).map((item) => item.label);
+  const companies = getTopCompanies(scopedSignals).map((item) => item.label);
   const lessDifferentiating = LESS_DIFFERENTIATING_BY_LENS[lens.id] ?? LESS_DIFFERENTIATING_BY_LENS.all;
   const updatedAt = scopedSignals
     .map((signal) => signal.created_at)

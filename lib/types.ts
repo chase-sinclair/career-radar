@@ -1,4 +1,3 @@
-// ─── Scoring types ──────────────────────────────────────────────────────────
 export interface ScoreComponent {
   score: number;
   max: number;
@@ -7,20 +6,11 @@ export interface ScoreComponent {
 
 export interface ScoreComponents {
   implementation_signal: ScoreComponent;
-  tool_specificity:      ScoreComponent;
-  buying_window:         ScoreComponent;
-  recency:               ScoreComponent;
+  tool_specificity: ScoreComponent;
+  buying_window: ScoreComponent;
+  recency: ScoreComponent;
 }
 
-export interface CandidateFitComponents {
-  role_alignment:   ScoreComponent;
-  skill_overlap:    ScoreComponent;
-  growth_alignment: ScoreComponent;
-  seniority_fit:    ScoreComponent;
-  recency:          ScoreComponent;
-}
-
-// ─── Primitive types ────────────────────────────────────────────────────────
 export type JobFamily =
   | 'Finance'
   | 'Infrastructure'
@@ -29,7 +19,8 @@ export type JobFamily =
   | 'Operations'
   | 'Other';
 
-// ─── Database row types ─────────────────────────────────────────────────────
+export type SeniorityLabel = 'EXEC' | 'SR' | 'IC';
+
 export interface Company {
   id: string;
   name: string;
@@ -48,21 +39,14 @@ export interface JobSignal {
   raw_description: string | null;
   job_url: string | null;
   job_family: JobFamily | null;
-  tech_stack: string[];       // Populated by signals_with_tags view
+  tech_stack: string[];
   intent_score: number | null;
-  score_components?: ScoreComponents | null; // Computed by API route — not stored in DB
-  computed_score?: number;                    // Sum of score_components — display source of truth
-  seniority_label?: 'EXEC' | 'SR' | 'IC' | null; // Computed for UI enrichment — not part of score
-  candidate_fit_components?: CandidateFitComponents | null;
-  fit_score?: number | null;
-  fit_summary?: string | null;
-  positioning_hook?: string | null;
-  matched_skills?: string[];
-  missing_skills?: string[];
-  top_role_match?: string | null;
+  score_components?: ScoreComponents | null;
+  computed_score?: number;
+  seniority_label?: SeniorityLabel | null;
   sales_hook: string | null;
   is_hot_lead: boolean;
-  posted_at: string | null;   // TEXT in DB — SerpApi relative strings e.g. "4 days ago"
+  posted_at: string | null;
   created_at: string;
 }
 
@@ -73,75 +57,4 @@ export interface WeeklySnapshot {
   signal_count: number;
   avg_intent_score: number | null;
   dominant_family: string | null;
-}
-
-// ─── Derived / computed types ────────────────────────────────────────────────
-export interface CompanyWithDelta extends Company {
-  current_week_count: number;
-  previous_week_count: number;
-  delta: number;              // current - previous (negative = slowing)
-  delta_percent: number | null;
-  latest_signals: JobSignal[];
-}
-
-// ─── UI / filter types ───────────────────────────────────────────────────────
-export interface DashboardFilters {
-  job_families: JobFamily[];
-  min_intent_score: number;
-  tags: string[];
-  hot_leads_only: boolean;
-  search: string;
-}
-
-export interface KpiData {
-  total_signals: number;
-  hot_leads: number;
-  avg_intent_score: number;
-  companies_tracked: number;
-}
-
-// Candidate profile types
-export type CandidateProfileId =
-  | 'chase-ai-workflow'
-  | 'finance-transformation'
-  | 'sales-gtm';
-
-export type CandidateSkillType = 'strength' | 'target' | 'gap';
-
-export interface CandidateSkill {
-  name: string;
-  type: CandidateSkillType;
-}
-
-export interface CandidatePreferences {
-  target_roles: string[];
-  desired_direction: string[];
-  target_job_families: JobFamily[];
-  priority_tags: string[];
-  search_keywords: string[];
-  role_keywords: string[];
-  known_tags: string[];
-  growth_tags: string[];
-  preferred_seniority: Array<'EXEC' | 'SR' | 'IC'>;
-}
-
-export interface CandidateScoringWeights {
-  role_alignment: number;
-  current_skill_overlap: number;
-  growth_alignment: number;
-  seniority_fit: number;
-  recency: number;
-}
-
-export interface CandidateProfile {
-  id: CandidateProfileId;
-  name: string;
-  short_label: string;
-  headline: string;
-  summary: string;
-  skills: CandidateSkill[];
-  preferences: CandidatePreferences;
-  scoring_weights: CandidateScoringWeights;
-  default_min_intent_score: number;
-  default_hot_leads_only: boolean;
 }
