@@ -6,26 +6,29 @@ Status: planning artifact. The live n8n workflow is unchanged.
 
 Reframe ingestion from old sales-intent scoring into labor-market intelligence. The future workflow should continue collecting Google Jobs postings, but the OpenAI step should extract role, skill, tool, AI, automation, company type, and role-evolution signals.
 
-## Proposed Query List
+## Proposed MVP Query List
 
-Prioritize cross-functional AI-driven role change. V1 queries:
+Start with a smaller 10-query set to keep manual testing cheap and readable:
 
 - finance systems analyst automation
 - FP&A Power BI SQL automation
-- finance transformation analyst AI
 - RevOps automation
 - GTM engineer
-- sales operations AI automation
 - operations workflow automation
-- AI operations specialist
 - AI governance analyst
 - model risk AI
-- compliance AI governance
 - data analyst AI automation
-- analytics engineer AI
 - LLM evaluation
-- internal tools AI
 - AI workflow automation
+
+Expansion candidates after manual testing:
+
+- finance transformation analyst AI
+- sales operations AI automation
+- AI operations specialist
+- compliance AI governance
+- analytics engineer AI
+- internal tools AI
 - product manager AI workflows
 - marketing operations AI
 - HR operations automation

@@ -29,7 +29,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return [\n  {\n    json: {\n      search_queries: [\n        'finance systems analyst automation',\n        'FP&A Power BI SQL automation',\n        'finance transformation analyst AI',\n        'RevOps automation',\n        'GTM engineer',\n        'sales operations AI automation',\n        'operations workflow automation',\n        'AI operations specialist',\n        'AI governance analyst',\n        'model risk AI',\n        'compliance AI governance',\n        'data analyst AI automation',\n        'analytics engineer AI',\n        'LLM evaluation',\n        'internal tools AI',\n        'AI workflow automation',\n        'product manager AI workflows',\n        'marketing operations AI',\n        'HR operations automation',\n        'business analyst AI tools',\n        'consulting AI transformation',\n        'AI enablement manager'\n      ],\n      lookback_days: 7,\n      prompt_version: 'marketlens-v1',\n      schema_version: '2026-05-05',\n      model_name: 'gpt-4o-mini'\n    }\n  }\n];"
+        "jsCode": "return [\n  {\n    json: {\n      search_queries: [\n        'finance systems analyst automation',\n        'FP&A Power BI SQL automation',\n        'RevOps automation',\n        'GTM engineer',\n        'operations workflow automation',\n        'AI governance analyst',\n        'model risk AI',\n        'data analyst AI automation',\n        'LLM evaluation',\n        'AI workflow automation'\n      ],\n      lookback_days: 7,\n      prompt_version: 'marketlens-v1',\n      schema_version: '2026-05-05',\n      model_name: 'gpt-4o-mini'\n    }\n  }\n];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,

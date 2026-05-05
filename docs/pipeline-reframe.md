@@ -6,7 +6,7 @@ Status: repo draft only. The live n8n instance has not been changed.
 
 - Current exports were backed up to `n8n/backups/2026-05-05/`.
 - A new inactive draft workflow was created at `n8n/marketlens_daily.json`.
-- The draft uses broader labor-market queries instead of SignalPulse sales-intent searches.
+- The draft uses a smaller MVP labor-market query set instead of SignalPulse sales-intent searches.
 - The draft OpenAI prompt matches `docs/enrichment-contract.md`.
 - The draft maps enriched output to the proposed `labor_market_enrichments` table.
 
@@ -29,7 +29,7 @@ That is different from the old goal of identifying B2B software-buying intent.
 
 ## Draft Query Strategy
 
-The new query list intentionally spans role families:
+The MVP query list intentionally spans the highest-priority role families:
 
 - Finance
 - Sales & GTM
@@ -37,10 +37,6 @@ The new query list intentionally spans role families:
 - Risk & Compliance
 - Data & Analytics
 - Software & AI
-- Marketing
-- HR & People Ops
-- Product
-- Consulting & Strategy
 
 The first query set lives in `n8n/marketlens_daily.json` and `docs/pipeline-extraction-plan.md`.
 
@@ -108,6 +104,10 @@ Before importing `n8n/marketlens_daily.json` into live n8n:
 - review the node types against the installed n8n version
 - attach SerpApi, OpenAI, and Supabase service credentials manually
 - confirm Supabase table-node upsert output includes the inserted `job_signals.id`
-- test with one query and one posting first
+- keep the imported workflow inactive/manual during setup
+- test with 1-2 queries first
+- use `gpt-4o-mini` for MVP extraction
+- inspect `job_signals` and `labor_market_enrichments` rows before scheduling
 - verify malformed-output paths before activating the schedule
-- apply and verify the proposed Supabase migration only after review
+- apply and verify the proposed Supabase migration before importing/testing
+- after successful manual tests, schedule daily at 6 AM

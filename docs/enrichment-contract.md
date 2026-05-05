@@ -173,6 +173,7 @@ The pipeline should validate before writing to `labor_market_enrichments`.
 - Array values should be short labels, not paragraphs.
 - `evidence_snippets` should include 1 to 5 concise snippets copied or tightly paraphrased from the posting.
 - `confidence_score < 0.55` should write a row with `validation_status = 'low_confidence'` and should not power homepage insights by default.
+- `low_confidence` and debug/error rows are internal only and should not appear through public APIs or public-safe views.
 - Missing company, title, or description should write `validation_status = 'missing_required_input'` when a source row exists but cannot be enriched.
 
 ## Malformed Output Handling
@@ -196,6 +197,7 @@ The pipeline should validate before writing to `labor_market_enrichments`.
 - If a posting is missing a description, fall back to title and company only, but set lower confidence and `validation_status = 'partial'`.
 - If enrichment insert fails, log the source `job_signal_id`, company, title, and error message in the workflow execution.
 - Keep the source posting write separate from enrichment write so ingestion is not blocked by enrichment quality issues.
+- Store `raw_model_output` for debugging, but never expose it through public-facing APIs or views.
 
 ## Example Input
 

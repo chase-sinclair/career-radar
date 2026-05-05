@@ -113,9 +113,9 @@ create index if not exists labor_market_enrichments_automation_relevance_score_i
 create index if not exists labor_market_enrichments_enrichment_timestamp_idx
   on public.labor_market_enrichments (enrichment_timestamp desc);
 
-create index if not exists labor_market_enrichments_valid_idx
+create index if not exists labor_market_enrichments_public_safe_idx
   on public.labor_market_enrichments (role_family, role_cluster, enrichment_timestamp desc)
-  where validation_status = 'valid';
+  where validation_status in ('valid', 'partial');
 
 create index if not exists labor_market_enrichments_tools_gin_idx
   on public.labor_market_enrichments using gin (tools);
@@ -134,11 +134,46 @@ create index if not exists labor_market_enrichments_less_differentiating_gin_idx
 
 alter table public.labor_market_enrichments enable row level security;
 
-create policy "Public can read safe labor market enrichments"
+create policy "Service role can manage labor market enrichments"
 on public.labor_market_enrichments
-for select
-to anon, authenticated
-using (validation_status in ('valid', 'partial', 'low_confidence'));
+for all
+to service_role
+using (true)
+with check (true);
+
+create or replace view public.public_labor_market_enrichments as
+select
+  id,
+  job_signal_id,
+  role_title_normalized,
+  role_family,
+  role_cluster,
+  company_type,
+  industry,
+  seniority,
+  tools,
+  technical_skills,
+  business_skills,
+  ai_skills,
+  responsibilities,
+  emerging_role_score,
+  ai_relevance_score,
+  automation_relevance_score,
+  transformation_category,
+  role_evolution_signal,
+  less_differentiating_alone_signals,
+  market_insight,
+  confidence_score,
+  evidence_snippets,
+  model_name,
+  prompt_version,
+  enrichment_timestamp,
+  schema_version,
+  validation_status,
+  created_at,
+  updated_at
+from public.labor_market_enrichments
+where validation_status in ('valid', 'partial');
 
 revoke all on table public.labor_market_enrichments from anon, authenticated;
-grant select on table public.labor_market_enrichments to anon, authenticated;
+grant select on public.public_labor_market_enrichments to anon, authenticated;

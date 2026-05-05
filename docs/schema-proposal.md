@@ -79,39 +79,84 @@ These indexes support the V1 pages and future APIs:
   - `business_skills`
   - `ai_skills`
   - `less_differentiating_alone_signals`
-- partial index on valid rows:
-  - `where validation_status = 'valid'`
+- partial index on public-safe rows:
+  - `where validation_status in ('valid', 'partial')`
 
 ## RLS And Grants Recommendation
 
-Use the same read-heavy public model as the current app, but avoid broad `ALL` grants.
+Use a stricter public model than the current inherited app. The base enrichment table should be internal because it stores debug fields such as `raw_model_output` and `error_message`.
 
 Recommended posture:
 
 - Enable RLS on `labor_market_enrichments`.
-- Allow `anon` and `authenticated` to `SELECT` only rows safe for public display.
+- Do not grant `anon` or `authenticated` direct access to the base table.
+- Expose only a public-safe view that excludes debug/internal columns.
+- Public-safe rows are only `validation_status in ('valid', 'partial')`.
+- `low_confidence`, malformed, schema-error, and insert-failed rows stay internal.
 - Do not grant write permissions to `anon` or `authenticated`.
 - Write with `service_role` from n8n only.
-- Grant `SELECT` explicitly instead of `ALL`.
+- Grant `SELECT` explicitly on the public-safe view instead of `ALL` on the table.
 
 Proposed policies:
 
 ```sql
 alter table public.labor_market_enrichments enable row level security;
 
-create policy "Public can read valid labor market enrichments"
+create policy "Service role can manage labor market enrichments"
 on public.labor_market_enrichments
-for select
-to anon, authenticated
-using (validation_status in ('valid', 'partial', 'low_confidence'));
+for all
+to service_role
+using (true)
+with check (true);
+
+create or replace view public.public_labor_market_enrichments as
+select
+  id,
+  job_signal_id,
+  role_title_normalized,
+  role_family,
+  role_cluster,
+  company_type,
+  industry,
+  seniority,
+  tools,
+  technical_skills,
+  business_skills,
+  ai_skills,
+  responsibilities,
+  emerging_role_score,
+  ai_relevance_score,
+  automation_relevance_score,
+  transformation_category,
+  role_evolution_signal,
+  less_differentiating_alone_signals,
+  market_insight,
+  confidence_score,
+  evidence_snippets,
+  model_name,
+  prompt_version,
+  enrichment_timestamp,
+  schema_version,
+  validation_status,
+  created_at,
+  updated_at
+from public.labor_market_enrichments
+where validation_status in ('valid', 'partial');
 ```
 
 Recommended grants:
 
 ```sql
 revoke all on table public.labor_market_enrichments from anon, authenticated;
-grant select on table public.labor_market_enrichments to anon, authenticated;
+grant select on public.public_labor_market_enrichments to anon, authenticated;
 ```
+
+The public-safe view intentionally excludes:
+
+- `raw_model_output`
+- `error_message`
+
+These fields are useful for debugging and reprocessing, but should never be exposed to browser clients.
 
 ## Backward Compatibility
 
