@@ -1,0 +1,409 @@
+{
+  "name": "Career Radar MarketLens Daily - DRAFT",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/New_York",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "draft-schedule-trigger",
+      "name": "Daily Schedule"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      search_queries: [\n        'finance systems analyst automation',\n        'FP&A Power BI SQL automation',\n        'finance transformation analyst AI',\n        'RevOps automation',\n        'GTM engineer',\n        'sales operations AI automation',\n        'operations workflow automation',\n        'AI operations specialist',\n        'AI governance analyst',\n        'model risk AI',\n        'compliance AI governance',\n        'data analyst AI automation',\n        'analytics engineer AI',\n        'LLM evaluation',\n        'internal tools AI',\n        'AI workflow automation',\n        'product manager AI workflows',\n        'marketing operations AI',\n        'HR operations automation',\n        'business analyst AI tools',\n        'consulting AI transformation',\n        'AI enablement manager'\n      ],\n      lookback_days: 7,\n      prompt_version: 'marketlens-v1',\n      schema_version: '2026-05-05',\n      model_name: 'gpt-4o-mini'\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "draft-query-config",
+      "name": "MarketLens Query Config"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "search_queries",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        440,
+        0
+      ],
+      "id": "draft-split-queries",
+      "name": "Split Queries"
+    },
+    {
+      "parameters": {
+        "operation": "google_jobs",
+        "q": "={{ $json.search_queries }}",
+        "additionalFields": {
+          "chips": "date_posted:today"
+        },
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-serpapi.serpApi",
+      "typeVersion": 1,
+      "position": [
+        660,
+        0
+      ],
+      "id": "draft-serpapi-search",
+      "name": "Google Jobs Search",
+      "notes": "Uses the existing SerpApi credential when imported. No credentials are stored in this draft."
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "jobs_results",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        880,
+        0
+      ],
+      "id": "draft-split-jobs",
+      "name": "Split Jobs"
+    },
+    {
+      "parameters": {
+        "jsCode": "const job = $json;\nconst company = (job.company_name || job.company || '').trim();\nconst title = (job.title || '').trim();\nconst description = (job.description || job.detected_extensions?.description || '').trim();\nconst externalJobId = job.job_id || job.share_link || `${title}_${company}`;\n\nif (!company || !title || !description) {\n  return [{\n    json: {\n      ...job,\n      external_job_id: externalJobId,\n      company_name: company,\n      job_title: title,\n      raw_description: description,\n      validation_status: 'missing_required_input',\n      error_message: 'Missing company, title, or description before enrichment.'\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    external_job_id: externalJobId,\n    company_name: company,\n    job_title: title,\n    raw_description: description,\n    job_url: job.share_link || job.link || job.apply_options?.[0]?.link || '',\n    posted_at: job.detected_extensions?.posted_at || job.extensions?.join(', ') || '',\n    source_query: $('Split Queries').item.json.search_queries,\n    prompt_version: $('MarketLens Query Config').first().json.prompt_version,\n    schema_version: $('MarketLens Query Config').first().json.schema_version,\n    model_name: $('MarketLens Query Config').first().json.model_name,\n    validation_status: 'ready'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        0
+      ],
+      "id": "draft-normalize-job",
+      "name": "Normalize Job Input"
+    },
+    {
+      "parameters": {
+        "jsCode": "const prompt = `Analyze this job posting as a Career Radar labor-market signal.\n\nReturn a single JSON object with:\n- role_title_normalized\n- role_family\n- role_cluster\n- emerging_role_score\n- ai_relevance_score\n- automation_relevance_score\n- company_type\n- industry\n- seniority\n- tools\n- technical_skills\n- business_skills\n- ai_skills\n- responsibilities\n- transformation_category\n- role_evolution_signal\n- less_differentiating_alone_signals\n- market_insight\n- confidence_score\n- evidence_snippets\n\nRules:\n- Use only facts supported by the title, company, description, and source metadata.\n- Keep arrays short and deduplicated.\n- Scores are 1 to 10 except confidence_score, which is 0 to 1.\n- role_family must be one of: Finance, Sales & GTM, Operations, Marketing, Product, HR & People Ops, Risk & Compliance, Data & Analytics, Software & AI, Consulting & Strategy, Other.\n- If evidence is weak, lower confidence instead of guessing.\n- Return JSON only. No markdown.\n\nPosting:\nCompany: ${$json.company_name}\nTitle: ${$json.job_title}\nPosted: ${$json.posted_at}\nDescription:\n${$json.raw_description}`;\n\nreturn [{\n  json: {\n    ...$json,\n    openai_system_prompt: 'You analyze job postings as labor-market intelligence signals for workers navigating AI, automation, and software-driven role change. Extract grounded facts separately from inferred market signals. Return only valid JSON matching the requested schema. Do not invent tools, skills, companies, or responsibilities that are not supported by the posting. Use losing differentiation alone framing instead of declaring any skill dead or obsolete.',\n    openai_user_prompt: prompt\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        0
+      ],
+      "id": "draft-build-prompt",
+      "name": "Build Labor Market Prompt"
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "model": "gpt-4o-mini",
+        "prompt": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "={{ $json.openai_system_prompt }}"
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.openai_user_prompt }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        1540,
+        0
+      ],
+      "id": "draft-openai-enrich",
+      "name": "OpenAI Labor Market Extraction",
+      "notes": "Draft only. Attach the existing OpenAI credential after importing into n8n."
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Build Labor Market Prompt').item.json;\nconst raw = $json.output || $json.text || $json.message?.content || JSON.stringify($json);\n\nfunction fail(status, message) {\n  return [{\n    json: {\n      ...source,\n      enrichment: null,\n      raw_model_output: raw,\n      validation_status: status,\n      error_message: message\n    }\n  }];\n}\n\nlet parsed;\ntry {\n  parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;\n} catch (error) {\n  return fail('invalid_json', error.message);\n}\n\nconst required = ['role_title_normalized', 'role_family', 'role_cluster', 'emerging_role_score', 'ai_relevance_score', 'automation_relevance_score', 'company_type', 'seniority', 'confidence_score'];\nfor (const field of required) {\n  if (parsed[field] === undefined || parsed[field] === null || String(parsed[field]).trim() === '') {\n    return fail('schema_error', `Missing required enrichment field: ${field}`);\n  }\n}\n\nconst scoreFields = ['emerging_role_score', 'ai_relevance_score', 'automation_relevance_score'];\nfor (const field of scoreFields) {\n  const value = Number(parsed[field]);\n  if (!Number.isFinite(value) || value < 1 || value > 10) {\n    return fail('schema_error', `Score out of range: ${field}`);\n  }\n  parsed[field] = Math.round(value);\n}\n\nparsed.confidence_score = Number(parsed.confidence_score);\nif (!Number.isFinite(parsed.confidence_score) || parsed.confidence_score < 0 || parsed.confidence_score > 1) {\n  return fail('schema_error', 'confidence_score out of range');\n}\n\nconst arrayFields = ['tools', 'technical_skills', 'business_skills', 'ai_skills', 'responsibilities', 'less_differentiating_alone_signals', 'evidence_snippets'];\nfor (const field of arrayFields) {\n  parsed[field] = Array.isArray(parsed[field]) ? [...new Set(parsed[field].filter(Boolean).map((item) => String(item).trim()))] : [];\n}\n\nreturn [{\n  json: {\n    ...source,\n    enrichment: parsed,\n    raw_model_output: parsed,\n    validation_status: parsed.confidence_score < 0.55 ? 'low_confidence' : 'valid',\n    error_message: null\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        0
+      ],
+      "id": "draft-validate-json",
+      "name": "Validate Extraction JSON"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": "public",
+        "table": "companies",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "name": "={{ $json.company_name }}"
+          },
+          "matchingColumns": [
+            "name"
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1980,
+        0
+      ],
+      "id": "draft-upsert-company",
+      "name": "Upsert Company Safely",
+      "notes": "Use Supabase table operation/upsert instead of interpolated SQL. Attach Supabase service credential on import."
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": "public",
+        "table": "job_signals",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "external_job_id": "={{ $json.external_job_id }}",
+            "company_name": "={{ $json.company_name }}",
+            "job_title": "={{ $json.job_title }}",
+            "raw_description": "={{ $json.raw_description }}",
+            "job_url": "={{ $json.job_url }}",
+            "posted_at": "={{ $json.posted_at }}",
+            "job_family": "={{ $json.enrichment?.role_family || 'Other' }}",
+            "intent_score": "={{ Math.max(1, Math.min(10, Number($json.enrichment?.ai_relevance_score || 1))) }}",
+            "sales_hook": "={{ $json.enrichment?.market_insight || '' }}",
+            "is_hot_lead": "={{ Number($json.enrichment?.emerging_role_score || 0) >= 9 }}",
+            "score_components": "={{ $json.enrichment || {} }}"
+          },
+          "matchingColumns": [
+            "external_job_id"
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2200,
+        0
+      ],
+      "id": "draft-upsert-job-signal",
+      "name": "Upsert Source Posting"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": "public",
+        "table": "labor_market_enrichments",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "job_signal_id": "={{ $json.id }}",
+            "role_title_normalized": "={{ $('Validate Extraction JSON').item.json.enrichment?.role_title_normalized || $('Validate Extraction JSON').item.json.job_title }}",
+            "role_family": "={{ $('Validate Extraction JSON').item.json.enrichment?.role_family || 'Other' }}",
+            "role_cluster": "={{ $('Validate Extraction JSON').item.json.enrichment?.role_cluster || 'Unclassified' }}",
+            "emerging_role_score": "={{ $('Validate Extraction JSON').item.json.enrichment?.emerging_role_score || 1 }}",
+            "ai_relevance_score": "={{ $('Validate Extraction JSON').item.json.enrichment?.ai_relevance_score || 1 }}",
+            "automation_relevance_score": "={{ $('Validate Extraction JSON').item.json.enrichment?.automation_relevance_score || 1 }}",
+            "company_type": "={{ $('Validate Extraction JSON').item.json.enrichment?.company_type || 'Unknown' }}",
+            "industry": "={{ $('Validate Extraction JSON').item.json.enrichment?.industry || null }}",
+            "seniority": "={{ $('Validate Extraction JSON').item.json.enrichment?.seniority || 'Unknown' }}",
+            "tools": "={{ $('Validate Extraction JSON').item.json.enrichment?.tools || [] }}",
+            "technical_skills": "={{ $('Validate Extraction JSON').item.json.enrichment?.technical_skills || [] }}",
+            "business_skills": "={{ $('Validate Extraction JSON').item.json.enrichment?.business_skills || [] }}",
+            "ai_skills": "={{ $('Validate Extraction JSON').item.json.enrichment?.ai_skills || [] }}",
+            "responsibilities": "={{ $('Validate Extraction JSON').item.json.enrichment?.responsibilities || [] }}",
+            "transformation_category": "={{ $('Validate Extraction JSON').item.json.enrichment?.transformation_category || null }}",
+            "role_evolution_signal": "={{ $('Validate Extraction JSON').item.json.enrichment?.role_evolution_signal || null }}",
+            "less_differentiating_alone_signals": "={{ $('Validate Extraction JSON').item.json.enrichment?.less_differentiating_alone_signals || [] }}",
+            "market_insight": "={{ $('Validate Extraction JSON').item.json.enrichment?.market_insight || null }}",
+            "confidence_score": "={{ $('Validate Extraction JSON').item.json.enrichment?.confidence_score || 0 }}",
+            "evidence_snippets": "={{ $('Validate Extraction JSON').item.json.enrichment?.evidence_snippets || [] }}",
+            "model_name": "={{ $('Validate Extraction JSON').item.json.model_name }}",
+            "prompt_version": "={{ $('Validate Extraction JSON').item.json.prompt_version }}",
+            "schema_version": "={{ $('Validate Extraction JSON').item.json.schema_version }}",
+            "raw_model_output": "={{ $('Validate Extraction JSON').item.json.raw_model_output }}",
+            "validation_status": "={{ $('Validate Extraction JSON').item.json.validation_status }}",
+            "error_message": "={{ $('Validate Extraction JSON').item.json.error_message }}"
+          },
+          "matchingColumns": [
+            "job_signal_id",
+            "prompt_version",
+            "schema_version"
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2420,
+        0
+      ],
+      "id": "draft-upsert-enrichment",
+      "name": "Upsert Labor Market Enrichment"
+    }
+  ],
+  "connections": {
+    "Daily Schedule": {
+      "main": [
+        [
+          {
+            "node": "MarketLens Query Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MarketLens Query Config": {
+      "main": [
+        [
+          {
+            "node": "Split Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Queries": {
+      "main": [
+        [
+          {
+            "node": "Google Jobs Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Jobs Search": {
+      "main": [
+        [
+          {
+            "node": "Split Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Jobs": {
+      "main": [
+        [
+          {
+            "node": "Normalize Job Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Job Input": {
+      "main": [
+        [
+          {
+            "node": "Build Labor Market Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Labor Market Prompt": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Labor Market Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Labor Market Extraction": {
+      "main": [
+        [
+          {
+            "node": "Validate Extraction JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Extraction JSON": {
+      "main": [
+        [
+          {
+            "node": "Upsert Company Safely",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Company Safely": {
+      "main": [
+        [
+          {
+            "node": "Upsert Source Posting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Source Posting": {
+      "main": [
+        [
+          {
+            "node": "Upsert Labor Market Enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "description": "Draft-only workflow export for Career Radar labor-market intelligence. It is intentionally inactive and contains no credentials."
+  },
+  "tags": [
+    {
+      "name": "draft"
+    },
+    {
+      "name": "career-radar"
+    }
+  ]
+}
