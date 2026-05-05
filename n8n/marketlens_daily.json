@@ -29,7 +29,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return [\n  {\n    json: {\n      search_queries: [\n        'finance systems analyst automation',\n        'FP&A Power BI SQL automation',\n        'RevOps automation',\n        'GTM engineer',\n        'operations workflow automation',\n        'AI governance analyst',\n        'model risk AI',\n        'data analyst AI automation',\n        'LLM evaluation',\n        'AI workflow automation'\n      ],\n      lookback_days: 7,\n      prompt_version: 'marketlens-v1',\n      schema_version: '2026-05-05',\n      model_name: 'gpt-4o-mini'\n    }\n  }\n];"
+        "jsCode": "return [\n  {\n    json: {\n      search_queries: [\n        'GTM engineer',\n        'AI governance analyst'\n      ],\n      lookback_days: 7,\n      prompt_version: 'marketlens-v1',\n      schema_version: '2026-05-05',\n      model_name: 'gpt-4o-mini'\n    }\n  }\n];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -115,10 +115,14 @@
     },
     {
       "parameters": {
-        "resource": "chat",
-        "model": "gpt-4o-mini",
-        "prompt": {
-          "messages": [
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
             {
               "role": "system",
               "content": "={{ $json.openai_system_prompt }}"
@@ -129,18 +133,24 @@
             }
           ]
         },
+        "builtInTools": {},
         "options": {
-          "temperature": 0.2
+          "temperature": 0.2,
+          "textFormat": {
+            "textOptions": {
+              "type": "json_object"
+            }
+          }
         }
       },
       "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 1.8,
+      "typeVersion": 2.1,
       "position": [
         1540,
         0
       ],
       "id": "draft-openai-enrich",
-      "name": "OpenAI Labor Market Extraction",
+      "name": "Message a model",
       "notes": "Draft only. Attach the existing OpenAI credential after importing into n8n."
     },
     {
@@ -159,56 +169,38 @@
     {
       "parameters": {
         "operation": "upsert",
-        "schema": "public",
         "table": "companies",
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "name": "={{ $json.company_name }}"
-          },
-          "matchingColumns": [
-            "name"
-          ]
-        },
-        "options": {}
+        "dataSource": "json",
+        "json": "={{ JSON.stringify({ name: $('Validate Extraction JSON').item.json.company_name }) }}",
+        "sendAllItems": false,
+        "onConflict": "name",
+        "resolution": "merge-duplicates",
+        "returning": "minimal",
+        "select": "*"
       },
-      "type": "n8n-nodes-base.supabase",
+      "type": "n8n-nodes-supabase-upsert.supabaseUpsert",
       "typeVersion": 1,
       "position": [
         1980,
-        0
+        -140
       ],
       "id": "draft-upsert-company",
       "name": "Upsert Company Safely",
-      "notes": "Use Supabase table operation/upsert instead of interpolated SQL. Attach Supabase service credential on import."
+      "notes": "Community node draft. Upserts the company row by name using the Supabase REST API."
     },
     {
       "parameters": {
         "operation": "upsert",
-        "schema": "public",
         "table": "job_signals",
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "external_job_id": "={{ $json.external_job_id }}",
-            "company_name": "={{ $json.company_name }}",
-            "job_title": "={{ $json.job_title }}",
-            "raw_description": "={{ $json.raw_description }}",
-            "job_url": "={{ $json.job_url }}",
-            "posted_at": "={{ $json.posted_at }}",
-            "job_family": "={{ $json.enrichment?.role_family || 'Other' }}",
-            "intent_score": "={{ Math.max(1, Math.min(10, Number($json.enrichment?.ai_relevance_score || 1))) }}",
-            "sales_hook": "={{ $json.enrichment?.market_insight || '' }}",
-            "is_hot_lead": "={{ Number($json.enrichment?.emerging_role_score || 0) >= 9 }}",
-            "score_components": "={{ $json.enrichment || {} }}"
-          },
-          "matchingColumns": [
-            "external_job_id"
-          ]
-        },
-        "options": {}
+        "dataSource": "json",
+        "json": "={{ JSON.stringify({ external_job_id: $('Validate Extraction JSON').item.json.external_job_id, company_name: $('Validate Extraction JSON').item.json.company_name, job_title: $('Validate Extraction JSON').item.json.job_title, raw_description: $('Validate Extraction JSON').item.json.raw_description, job_url: $('Validate Extraction JSON').item.json.job_url, posted_at: $('Validate Extraction JSON').item.json.posted_at, job_family: $('Validate Extraction JSON').item.json.enrichment?.role_family || 'Other', intent_score: Math.max(1, Math.min(10, Number($('Validate Extraction JSON').item.json.enrichment?.ai_relevance_score || 1))), sales_hook: $('Validate Extraction JSON').item.json.enrichment?.market_insight || '', is_hot_lead: Number($('Validate Extraction JSON').item.json.enrichment?.emerging_role_score || 0) >= 9, score_components: $('Validate Extraction JSON').item.json.enrichment || {} }) }}",
+        "sendAllItems": false,
+        "onConflict": "external_job_id",
+        "resolution": "merge-duplicates",
+        "returning": "representation",
+        "select": "id,external_job_id,company_name,job_title,created_at"
       },
-      "type": "n8n-nodes-base.supabase",
+      "type": "n8n-nodes-supabase-upsert.supabaseUpsert",
       "typeVersion": 1,
       "position": [
         2200,
@@ -220,48 +212,16 @@
     {
       "parameters": {
         "operation": "upsert",
-        "schema": "public",
         "table": "labor_market_enrichments",
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "job_signal_id": "={{ $json.id }}",
-            "role_title_normalized": "={{ $('Validate Extraction JSON').item.json.enrichment?.role_title_normalized || $('Validate Extraction JSON').item.json.job_title }}",
-            "role_family": "={{ $('Validate Extraction JSON').item.json.enrichment?.role_family || 'Other' }}",
-            "role_cluster": "={{ $('Validate Extraction JSON').item.json.enrichment?.role_cluster || 'Unclassified' }}",
-            "emerging_role_score": "={{ $('Validate Extraction JSON').item.json.enrichment?.emerging_role_score || 1 }}",
-            "ai_relevance_score": "={{ $('Validate Extraction JSON').item.json.enrichment?.ai_relevance_score || 1 }}",
-            "automation_relevance_score": "={{ $('Validate Extraction JSON').item.json.enrichment?.automation_relevance_score || 1 }}",
-            "company_type": "={{ $('Validate Extraction JSON').item.json.enrichment?.company_type || 'Unknown' }}",
-            "industry": "={{ $('Validate Extraction JSON').item.json.enrichment?.industry || null }}",
-            "seniority": "={{ $('Validate Extraction JSON').item.json.enrichment?.seniority || 'Unknown' }}",
-            "tools": "={{ $('Validate Extraction JSON').item.json.enrichment?.tools || [] }}",
-            "technical_skills": "={{ $('Validate Extraction JSON').item.json.enrichment?.technical_skills || [] }}",
-            "business_skills": "={{ $('Validate Extraction JSON').item.json.enrichment?.business_skills || [] }}",
-            "ai_skills": "={{ $('Validate Extraction JSON').item.json.enrichment?.ai_skills || [] }}",
-            "responsibilities": "={{ $('Validate Extraction JSON').item.json.enrichment?.responsibilities || [] }}",
-            "transformation_category": "={{ $('Validate Extraction JSON').item.json.enrichment?.transformation_category || null }}",
-            "role_evolution_signal": "={{ $('Validate Extraction JSON').item.json.enrichment?.role_evolution_signal || null }}",
-            "less_differentiating_alone_signals": "={{ $('Validate Extraction JSON').item.json.enrichment?.less_differentiating_alone_signals || [] }}",
-            "market_insight": "={{ $('Validate Extraction JSON').item.json.enrichment?.market_insight || null }}",
-            "confidence_score": "={{ $('Validate Extraction JSON').item.json.enrichment?.confidence_score || 0 }}",
-            "evidence_snippets": "={{ $('Validate Extraction JSON').item.json.enrichment?.evidence_snippets || [] }}",
-            "model_name": "={{ $('Validate Extraction JSON').item.json.model_name }}",
-            "prompt_version": "={{ $('Validate Extraction JSON').item.json.prompt_version }}",
-            "schema_version": "={{ $('Validate Extraction JSON').item.json.schema_version }}",
-            "raw_model_output": "={{ $('Validate Extraction JSON').item.json.raw_model_output }}",
-            "validation_status": "={{ $('Validate Extraction JSON').item.json.validation_status }}",
-            "error_message": "={{ $('Validate Extraction JSON').item.json.error_message }}"
-          },
-          "matchingColumns": [
-            "job_signal_id",
-            "prompt_version",
-            "schema_version"
-          ]
-        },
-        "options": {}
+        "dataSource": "json",
+        "json": "={{ JSON.stringify({ job_signal_id: $json.id, role_title_normalized: $('Validate Extraction JSON').item.json.enrichment?.role_title_normalized || $('Validate Extraction JSON').item.json.job_title, role_family: $('Validate Extraction JSON').item.json.enrichment?.role_family || 'Other', role_cluster: $('Validate Extraction JSON').item.json.enrichment?.role_cluster || 'Unclassified', emerging_role_score: $('Validate Extraction JSON').item.json.enrichment?.emerging_role_score || 1, ai_relevance_score: $('Validate Extraction JSON').item.json.enrichment?.ai_relevance_score || 1, automation_relevance_score: $('Validate Extraction JSON').item.json.enrichment?.automation_relevance_score || 1, company_type: $('Validate Extraction JSON').item.json.enrichment?.company_type || 'Unknown', industry: $('Validate Extraction JSON').item.json.enrichment?.industry || null, seniority: $('Validate Extraction JSON').item.json.enrichment?.seniority || 'Unknown', tools: $('Validate Extraction JSON').item.json.enrichment?.tools || [], technical_skills: $('Validate Extraction JSON').item.json.enrichment?.technical_skills || [], business_skills: $('Validate Extraction JSON').item.json.enrichment?.business_skills || [], ai_skills: $('Validate Extraction JSON').item.json.enrichment?.ai_skills || [], responsibilities: $('Validate Extraction JSON').item.json.enrichment?.responsibilities || [], transformation_category: $('Validate Extraction JSON').item.json.enrichment?.transformation_category || null, role_evolution_signal: $('Validate Extraction JSON').item.json.enrichment?.role_evolution_signal || null, less_differentiating_alone_signals: $('Validate Extraction JSON').item.json.enrichment?.less_differentiating_alone_signals || [], market_insight: $('Validate Extraction JSON').item.json.enrichment?.market_insight || null, confidence_score: $('Validate Extraction JSON').item.json.enrichment?.confidence_score || 0, evidence_snippets: $('Validate Extraction JSON').item.json.enrichment?.evidence_snippets || [], model_name: $('Validate Extraction JSON').item.json.model_name, prompt_version: $('Validate Extraction JSON').item.json.prompt_version, schema_version: $('Validate Extraction JSON').item.json.schema_version, raw_model_output: $('Validate Extraction JSON').item.json.raw_model_output, validation_status: $('Validate Extraction JSON').item.json.validation_status, error_message: $('Validate Extraction JSON').item.json.error_message }) }}",
+        "sendAllItems": false,
+        "onConflict": "job_signal_id,prompt_version,schema_version",
+        "resolution": "merge-duplicates",
+        "returning": "representation",
+        "select": "id,job_signal_id,validation_status,prompt_version,schema_version"
       },
-      "type": "n8n-nodes-base.supabase",
+      "type": "n8n-nodes-supabase-upsert.supabaseUpsert",
       "typeVersion": 1,
       "position": [
         2420,
@@ -342,14 +302,14 @@
       "main": [
         [
           {
-            "node": "OpenAI Labor Market Extraction",
+            "node": "Message a model",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "OpenAI Labor Market Extraction": {
+    "Message a model": {
       "main": [
         [
           {
@@ -367,13 +327,7 @@
             "node": "Upsert Company Safely",
             "type": "main",
             "index": 0
-          }
-        ]
-      ]
-    },
-    "Upsert Company Safely": {
-      "main": [
-        [
+          },
           {
             "node": "Upsert Source Posting",
             "type": "main",
