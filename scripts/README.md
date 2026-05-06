@@ -36,3 +36,20 @@ Behavior:
 - targets redirect-style URLs such as `to.indeed.com` and Google `/url` links
 - follows redirects when possible and stores the stronger final URL
 - preserves the original URL in `score_components.original_apply_url`
+
+## Apply Company Name Fixes
+
+Apply a cleaned company-name CSV back to `job_signals` using the row `id`:
+
+```powershell
+node .\scripts\apply-company-name-fixes.mjs --file "C:\path\to\cleaned-company-fixes.csv" --dry-run
+node .\scripts\apply-company-name-fixes.mjs --file "C:\path\to\cleaned-company-fixes.csv"
+```
+
+Behavior:
+
+- loads `.env.local` and `.env`
+- matches rows by `job_signals.id`
+- updates `company_name` when your cleaned CSV has a recovered name
+- sets `company_name` to `null` when your cleaned CSV leaves it blank
+- skips unchanged rows automatically

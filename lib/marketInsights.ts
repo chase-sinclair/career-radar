@@ -86,6 +86,30 @@ const ROLE_STOP_WORDS = [
   'hybrid',
 ];
 
+const COMPANY_ANALYSIS_EXCLUSIONS = new Set([
+  'jobs via dice',
+  'virtualvocations',
+  'virtual vocations inc',
+  'pave talent',
+  'talent groups',
+  'motion recruitment',
+  '3b staffing llc',
+  'arizona staffing',
+  'connect tech+talent',
+  'hoatalent',
+  'horizontal talent',
+  'jga recruitment',
+  'lhh recruitment',
+  'mcs group - usa |  your specialist recruitment firm',
+  'mcs group - usa | your specialist recruitment firm',
+  'osprey talent solutions',
+  'peg staffing & recruiting',
+  'qualified staffing',
+  'staffing technologies',
+  'the global talent co',
+  'the global talent co.',
+]);
+
 const LESS_DIFFERENTIATING_BY_LENS: Record<string, string[]> = {
   all: ['Prompt engineering alone', 'Excel-only analysis', 'Generic dashboarding', 'Manual CRM administration'],
   finance: ['Excel-only analysis', 'Manual reconciliations', 'ERP exposure without automation', 'Static reporting'],
@@ -157,8 +181,16 @@ export function getTopCompanies(signals: JobSignal[], limit = 5): CountItem[] {
     .slice(0, limit);
 }
 
+export function isCompanyAnalysisEligible(signal: JobSignal): boolean {
+  const companyName = signal.company_name?.trim();
+  if (!companyName) return false;
+  return !COMPANY_ANALYSIS_EXCLUSIONS.has(companyName.toLowerCase());
+}
+
 export function summarizeCompanies(signals: JobSignal[], limit = 10): CompanySignalSummary[] {
-  const grouped = signals.reduce<Record<string, JobSignal[]>>((acc, signal) => {
+  const grouped = signals
+    .filter((signal) => isCompanyAnalysisEligible(signal))
+    .reduce<Record<string, JobSignal[]>>((acc, signal) => {
     acc[signal.company_name] = [...(acc[signal.company_name] ?? []), signal];
     return acc;
   }, {});
@@ -266,7 +298,9 @@ function inferTransformationCategory(signals: JobSignal[]): string {
 }
 
 export function summarizeIndustrySegments(signals: JobSignal[]): IndustrySegmentSummary[] {
-  const grouped = signals.reduce<Record<string, JobSignal[]>>((acc, signal) => {
+  const grouped = signals
+    .filter((signal) => isCompanyAnalysisEligible(signal))
+    .reduce<Record<string, JobSignal[]>>((acc, signal) => {
     const segment = inferCompanySegment(signal);
     acc[segment] = [...(acc[segment] ?? []), signal];
     return acc;

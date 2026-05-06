@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "import:curated": "node ./scripts/import-curated-jobs.mjs",
-    "repair:job-urls": "node ./scripts/repair-job-urls.mjs"
+    "repair:job-urls": "node ./scripts/repair-job-urls.mjs",
+    "apply:company-fixes": "node ./scripts/apply-company-name-fixes.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.9.0",

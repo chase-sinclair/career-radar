@@ -11,6 +11,7 @@ import {
   buildMarketBriefing,
   countValues,
   getLessDifferentiatingSignals,
+  isCompanyAnalysisEligible,
   getTopCompanies,
   getTopRoles,
   getTopTags,
@@ -217,8 +218,9 @@ export function buildWeeklyMarketBriefing(signals: JobSignal[], lens: MarketLens
   const industries = summarizeIndustrySegments(scopedSignals);
   const topRoles = getTopRoles(scopedSignals, 3).map((item) => item.label);
   const topTools = getTopTags(scopedSignals, 3).map((item) => item.label);
-  const topCompanies = getTopCompanies(scopedSignals, 3).map((item) => item.label);
-  const topCompanySummaries: CompanySignalSummary[] = summarizeCompanies(scopedSignals, 3);
+  const companyEligibleSignals = scopedSignals.filter((signal) => isCompanyAnalysisEligible(signal));
+  const topCompanies = getTopCompanies(companyEligibleSignals, 3).map((item) => item.label);
+  const topCompanySummaries: CompanySignalSummary[] = summarizeCompanies(companyEligibleSignals, 3);
 
   const roleSignal = topRoles[0] ?? 'AI-enabled role clusters';
   const toolSignal = topTools[0] ?? 'workflow automation';
