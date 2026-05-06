@@ -53,3 +53,20 @@ Behavior:
 - updates `company_name` when your cleaned CSV has a recovered name
 - sets `company_name` to `null` when your cleaned CSV leaves it blank
 - skips unchanged rows automatically
+
+## Apply Company Types
+
+Apply a normalized company-name dictionary back to `labor_market_enrichments.company_type`:
+
+```powershell
+node .\scripts\apply-company-types.mjs --file "C:\path\to\company-type-dictionary.csv" --dry-run
+node .\scripts\apply-company-types.mjs --file "C:\path\to\company-type-dictionary.csv"
+```
+
+Behavior:
+
+- loads `.env.local` and `.env`
+- matches `lower(trim(job_signals.company_name))` to `normalized_company_name`
+- updates `labor_market_enrichments.company_type`
+- only accepts the approved V1 company type values
+- skips unmatched and unchanged rows automatically

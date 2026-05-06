@@ -102,12 +102,18 @@ const COMPANY_ANALYSIS_EXCLUSIONS = new Set([
   'lhh recruitment',
   'mcs group - usa |  your specialist recruitment firm',
   'mcs group - usa | your specialist recruitment firm',
+  '<blank>',
   'osprey talent solutions',
   'peg staffing & recruiting',
   'qualified staffing',
+  'something went wrong. try again.',
   'staffing technologies',
   'the global talent co',
   'the global talent co.',
+  'unavailable',
+  'jobflarely (client)',
+  'gpac (client)',
+  'niche b2b services company...recession resistant...large brand name clients',
 ]);
 
 const LESS_DIFFERENTIATING_BY_LENS: Record<string, string[]> = {
