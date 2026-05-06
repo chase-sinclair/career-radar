@@ -70,3 +70,21 @@ Behavior:
 - updates `labor_market_enrichments.company_type`
 - only accepts the approved V1 company type values
 - skips unmatched and unchanged rows automatically
+
+## Backfill Labor Market Enrichments
+
+Create minimal `labor_market_enrichments` rows for older `job_signals` that do not have any enrichment yet:
+
+```powershell
+node .\scripts\backfill-labor-market-enrichments.mjs --dry-run
+node .\scripts\backfill-labor-market-enrichments.mjs
+node .\scripts\backfill-labor-market-enrichments.mjs --limit 100 --dry-run
+```
+
+Behavior:
+
+- loads `.env.local` and `.env`
+- finds `job_signals` rows without any enrichment row
+- creates a minimal partial enrichment row
+- infers a best-effort role family, cluster, seniority, and snippet
+- sets `company_type` to `Unknown` until a dictionary is applied

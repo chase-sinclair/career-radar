@@ -10,7 +10,8 @@
     "import:curated": "node ./scripts/import-curated-jobs.mjs",
     "repair:job-urls": "node ./scripts/repair-job-urls.mjs",
     "apply:company-fixes": "node ./scripts/apply-company-name-fixes.mjs",
-    "apply:company-types": "node ./scripts/apply-company-types.mjs"
+    "apply:company-types": "node ./scripts/apply-company-types.mjs",
+    "backfill:enrichments": "node ./scripts/backfill-labor-market-enrichments.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.9.0",
