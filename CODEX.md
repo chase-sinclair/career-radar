@@ -73,7 +73,7 @@ Key files:
 - `docs/enrichment-contract.md` - future OpenAI output contract.
 - `docs/schema-proposal.md` - additive Supabase schema proposal.
 - `docs/pipeline-reframe.md` - n8n/OpenAI reframe notes.
-- `n8n/marketlens_daily.json` - inactive draft workflow export.
+- `n8n/marketlens_daily.json` - validated hosted n8n workflow draft for manual runs.
 
 ## Data And Pipeline
 
@@ -84,11 +84,11 @@ Existing Supabase project:
 - View/function: `signals_with_tags`, `refresh_weekly_snapshots()`.
 - Schema dump: `supabase/schema.sql`.
 
-Proposed additive table:
+Additive labor-market table:
 
 - `labor_market_enrichments`
-- Draft migration: `supabase/migrations/20260505191712_proposal_labor_market_enrichments.sql`
-- Not applied.
+- Applied from `supabase/migrations/20260505191712_proposal_labor_market_enrichments.sql`
+- Public-safe view exists: `public_labor_market_enrichments`
 
 Existing n8n exports:
 
@@ -99,11 +99,27 @@ Backups:
 
 - `n8n/backups/2026-05-05/`
 
+Current ingestion sources:
+
+- `SerpApi` via hosted n8n workflow
+- Claude connector routine writing curated rows into `Career Radar - Job Tracker`
+
+Current workflow state:
+
+- Hosted `Career Radar MarketLens Daily` manual workflow is proven end-to-end for:
+  - search
+  - OpenAI extraction
+  - validation and normalization
+  - `job_signals` write
+  - `labor_market_enrichments` write
+- `job_signals.job_family` still requires legacy enum mapping.
+- Claude routine output quality is stronger than SerpApi for cross-functional roles.
+
 Known future database/security work:
 
-- Review/apply `labor_market_enrichments` migration.
 - Tighten broad Supabase grants and restrict `refresh_weekly_snapshots()` away from `anon`.
 - Add query indexes for existing dashboard paths.
+- Add an ingestion-source field or durable metadata path for `serpapi`, `claude_routine`, and future manual imports.
 
 ## Completed Phases
 
@@ -117,6 +133,8 @@ Known future database/security work:
 - Phase 7 - Enrichment contract and schema proposal: docs and draft migration only.
 - Phase 8 - n8n/OpenAI pipeline reframe: backup exports and inactive draft workflow only.
 - Phase 9 - Weekly aggregation: aggregation utilities and market API routes.
+- Phase 8.5 - Hosted workflow validation: migration applied, community upsert node tested, manual smoke tests passed, legacy family mapping added.
+- Phase 8.6 - Claude routine source: Google Sheet/CSV curated source validated as promising secondary ingestion source.
 
 Latest validation:
 
@@ -153,7 +171,9 @@ Build may change `next-env.d.ts` from `.next/dev/types/routes.d.ts` to `.next/ty
 ## Recommended Phase 10
 
 - Visual/demo polish after reviewing the app in browser.
-- Decide whether to apply the proposed Supabase migration.
-- Test the draft n8n workflow in a non-production/manual run.
+- Build `Career Radar Sheet Import` workflow for Google Sheet -> Supabase ingestion.
+- Use `Dedup Key` as `external_job_id` for curated imports.
+- Map sheet `Role Family` to legacy `job_signals.job_family` while preserving rich categories in `labor_market_enrichments`.
+- Decide whether curated imports should create minimal `partial` enrichment rows directly or run a second-pass enrichment.
 - Update Vercel deployment after final local validation.
 - Build a concise recruiter demo story around: live job data -> AI enrichment -> market lenses -> evidence-backed worker guidance.
