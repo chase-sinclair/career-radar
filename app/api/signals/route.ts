@@ -1,17 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '@/lib/supabase';
-import type { JobFamily } from '@/lib/types';
+import { createSupabaseAdmin, createSupabaseServer } from '@/lib/supabase';
+import type { JobSignal, MarketRoleFamily, MarketSeniority } from '@/lib/types';
 import { computeIntentScore, computeScoreComponents, computeSeniorityLabel } from '@/lib/scoring';
 import { filterSignalsForLens, getMarketLens, resolveMarketLensId } from '@/lib/marketLenses';
 
 export const dynamic = 'force-dynamic';
 
+interface PublicLaborMarketEnrichmentRow {
+  job_signal_id: string;
+  role_title_normalized: string | null;
+  role_family: MarketRoleFamily | null;
+  role_cluster: string | null;
+  company_type: string | null;
+  seniority: MarketSeniority | null;
+  market_insight: string | null;
+  evidence_snippets: string[] | null;
+  prompt_version: string | null;
+  validation_status: string | null;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createSupabaseServer();
+    const supabaseAdmin = createSupabaseAdmin();
     const { searchParams } = new URL(request.url);
     const minScore = Math.max(1, Math.min(10, parseInt(searchParams.get('min_score') ?? '1')));
-    const families = searchParams.getAll('family') as JobFamily[];
+    const families = searchParams.getAll('family');
     const hotOnly = searchParams.get('hot') === 'true';
     const search = searchParams.get('search')?.trim() ?? '';
     const tags = searchParams.getAll('tag');
@@ -23,9 +37,8 @@ export async function GET(request: NextRequest) {
       .gte('intent_score', minScore)
       .order('created_at', { ascending: false });
 
-    if (families.length > 0) query = query.in('job_family', families);
     if (hotOnly) query = query.eq('is_hot_lead', true);
-    if (search) query = query.ilike('company_name', `%${search}%`);
+    if (search) query = query.or(`company_name.ilike.%${search}%,job_title.ilike.%${search}%`);
 
     const [{ data, error }, { count: hotLeadsTotal }] = await Promise.all([
       query,
@@ -40,11 +53,64 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    const signalIds = new Set((data ?? []).map((row) => row.id));
+    const { data: enrichmentRows, error: enrichmentError } = signalIds.size > 0
+      ? await supabaseAdmin
+        .from('public_labor_market_enrichments')
+        .select(`
+          job_signal_id,
+          role_title_normalized,
+          role_family,
+          role_cluster,
+          company_type,
+          seniority,
+          market_insight,
+          evidence_snippets,
+          prompt_version,
+          validation_status
+        `)
+      : { data: [], error: null };
+
+    if (enrichmentError) {
+      console.error('[signals/route] Enrichment fetch error:', enrichmentError.message);
+      return NextResponse.json({ error: enrichmentError.message }, { status: 500 });
+    }
+
+    const enrichmentBySignalId = new Map(
+      ((enrichmentRows ?? []) as PublicLaborMarketEnrichmentRow[])
+        .filter((row) => signalIds.has(row.job_signal_id))
+        .map((row) => [row.job_signal_id, row]),
+    );
+
+    const mergedSignals = (data ?? []).map((signal) => {
+      const enrichment = enrichmentBySignalId.get(signal.id);
+      return {
+        ...signal,
+        market_role_family: enrichment?.role_family ?? null,
+        market_seniority: enrichment?.seniority ?? null,
+        role_title_normalized: enrichment?.role_title_normalized ?? null,
+        role_cluster: enrichment?.role_cluster ?? null,
+        company_type: enrichment?.company_type ?? null,
+        market_insight: enrichment?.market_insight ?? null,
+        evidence_snippets: enrichment?.evidence_snippets ?? [],
+        prompt_version: enrichment?.prompt_version ?? null,
+        validation_status: enrichment?.validation_status ?? null,
+      } satisfies JobSignal;
+    });
+
+    const familyFiltered = families.length > 0
+      ? mergedSignals.filter((signal) => {
+        const marketFamily = signal.market_role_family;
+        const legacyFamily = signal.job_family;
+        return families.some((family) => family === marketFamily || family === legacyFamily);
+      })
+      : mergedSignals;
+
     const tagFiltered = tags.length > 0
-      ? (data ?? []).filter((row) =>
+      ? familyFiltered.filter((row) =>
           tags.some((tag) => (row.tech_stack as string[])?.includes(tag)),
         )
-      : (data ?? []);
+      : familyFiltered;
 
     const enriched = tagFiltered.map((signal) => {
       const components = computeScoreComponents({
@@ -58,7 +124,7 @@ export async function GET(request: NextRequest) {
         ...signal,
         score_components: components,
         computed_score: computeIntentScore(components),
-        seniority_label: computeSeniorityLabel(signal.job_title),
+        seniority_label: computeSeniorityLabel(signal.role_title_normalized ?? signal.job_title),
       };
     });
     const lensFiltered = filterSignalsForLens(enriched, lens);

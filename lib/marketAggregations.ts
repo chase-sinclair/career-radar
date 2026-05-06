@@ -173,8 +173,8 @@ export function aggregateMarketSignals(signals: JobSignal[], lens: MarketLens): 
       10,
     ),
     roleFamilies: buildMovement(
-      activeCurrent.map((signal) => signal.job_family ?? 'Other'),
-      previous.map((signal) => signal.job_family ?? 'Other'),
+      activeCurrent.map((signal) => signal.market_role_family ?? signal.job_family ?? 'Other'),
+      previous.map((signal) => signal.market_role_family ?? signal.job_family ?? 'Other'),
       10,
     ),
     skills: buildMovement(

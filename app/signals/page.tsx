@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import MarketLensSelect from '@/components/MarketLensSelect';
-import type { JobFamily, JobSignal } from '@/lib/types';
+import type { JobFamily, JobSignal, MarketRoleFamily } from '@/lib/types';
 import {
   DEFAULT_MARKET_LENS_ID,
   getMarketLens,
@@ -12,15 +12,7 @@ import {
 } from '@/lib/marketLenses';
 import { formatBriefingDate, normalizeRoleTitle } from '@/lib/marketInsights';
 
-const FAMILIES: Array<JobFamily | 'All'> = [
-  'All',
-  'Finance',
-  'Infrastructure',
-  'Security',
-  'Sales',
-  'Operations',
-  'Other',
-];
+type SignalsFamily = JobFamily | MarketRoleFamily | 'All';
 
 function readLensFromUrl(): MarketLensId {
   if (typeof window === 'undefined') return DEFAULT_MARKET_LENS_ID;
@@ -51,7 +43,7 @@ export default function SignalsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [family, setFamily] = useState<JobFamily | 'All'>('All');
+  const [family, setFamily] = useState<SignalsFamily>('All');
   const [tool, setTool] = useState('All');
 
   const selectedLens = useMemo(() => getMarketLens(lensId), [lensId]);
@@ -61,9 +53,19 @@ export default function SignalsPage() {
     return ['All', ...Array.from(values).sort((a, b) => a.localeCompare(b)).slice(0, 80)];
   }, [signals]);
 
+  const families = useMemo(() => {
+    const values = new Set<SignalsFamily>();
+    signals.forEach((signal) => {
+      if (signal.market_role_family) values.add(signal.market_role_family);
+      else if (signal.job_family) values.add(signal.job_family);
+    });
+    return ['All', ...Array.from(values).sort((a, b) => a.localeCompare(b))];
+  }, [signals]);
+
   const filteredSignals = useMemo(() => (
     signals.filter((signal) => {
-      const familyMatch = family === 'All' || signal.job_family === family;
+      const displayFamily = signal.market_role_family ?? signal.job_family ?? 'Other';
+      const familyMatch = family === 'All' || displayFamily === family || signal.job_family === family;
       const toolMatch = tool === 'All' || (signal.tech_stack ?? []).includes(tool);
       return familyMatch && toolMatch && matchesSearch(signal, search);
     })
@@ -133,8 +135,8 @@ export default function SignalsPage() {
             </label>
             <label>
               <span>Role family</span>
-              <select value={family} onChange={(event) => setFamily(event.target.value as JobFamily | 'All')}>
-                {FAMILIES.map((value) => <option key={value}>{value}</option>)}
+              <select value={family} onChange={(event) => setFamily(event.target.value as SignalsFamily)}>
+                {families.map((value) => <option key={value}>{value}</option>)}
               </select>
             </label>
             <label>
@@ -181,9 +183,9 @@ export default function SignalsPage() {
                       </td>
                       <td>
                         <strong>{signal.job_title}</strong>
-                        <span>{normalizeRoleTitle(signal.job_title)}</span>
+                        <span>{normalizeRoleTitle(signal.role_title_normalized ?? signal.job_title)}</span>
                       </td>
-                      <td>{signal.job_family ?? 'Other'}</td>
+                      <td>{signal.market_role_family ?? signal.job_family ?? 'Other'}</td>
                       <td>
                         <div className="tag-list">
                           {(signal.tech_stack ?? []).slice(0, 5).map((tag) => (

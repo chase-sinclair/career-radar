@@ -21,6 +21,27 @@ export type JobFamily =
 
 export type SeniorityLabel = 'EXEC' | 'SR' | 'IC';
 
+export type MarketRoleFamily =
+  | 'Finance'
+  | 'Sales & GTM'
+  | 'Operations'
+  | 'Marketing'
+  | 'Product'
+  | 'HR & People Ops'
+  | 'Risk & Compliance'
+  | 'Data & Analytics'
+  | 'Software & AI'
+  | 'Consulting & Strategy'
+  | 'Other';
+
+export type MarketSeniority =
+  | 'Executive'
+  | 'Senior'
+  | 'Manager'
+  | 'IC'
+  | 'Early Career'
+  | 'Unknown';
+
 export interface Company {
   id: string;
   name: string;
@@ -48,6 +69,15 @@ export interface JobSignal {
   is_hot_lead: boolean;
   posted_at: string | null;
   created_at: string;
+  market_role_family?: MarketRoleFamily | null;
+  market_seniority?: MarketSeniority | null;
+  role_title_normalized?: string | null;
+  role_cluster?: string | null;
+  company_type?: string | null;
+  market_insight?: string | null;
+  evidence_snippets?: string[];
+  prompt_version?: string | null;
+  validation_status?: string | null;
 }
 
 export interface WeeklySnapshot {

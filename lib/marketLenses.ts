@@ -140,10 +140,12 @@ export function getMarketLens(id: MarketLensId): MarketLens {
 export function signalMatchesLens(signal: JobSignal, lens: MarketLens): boolean {
   if (lens.id === 'all') return true;
 
-  const title = signal.job_title.toLowerCase();
+  const title = (signal.role_title_normalized ?? signal.job_title).toLowerCase();
   const description = signal.raw_description?.toLowerCase() ?? '';
   const tags = (signal.tech_stack ?? []).map((tag) => tag.toLowerCase());
   const familyMatch = signal.job_family ? lens.families.includes(signal.job_family) : false;
+  const marketFamily = signal.market_role_family?.toLowerCase() ?? '';
+  const marketFamilyMatch = lens.label.toLowerCase() === marketFamily;
   const titleMatch = lens.titleKeywords.some((keyword) =>
     title.includes(keyword) || description.includes(keyword),
   );
@@ -151,7 +153,7 @@ export function signalMatchesLens(signal: JobSignal, lens: MarketLens): boolean 
     tags.some((tag) => tag.includes(keyword)),
   );
 
-  return familyMatch || titleMatch || tagMatch;
+  return familyMatch || marketFamilyMatch || titleMatch || tagMatch;
 }
 
 export function filterSignalsForLens(signals: JobSignal[], lens: MarketLens): JobSignal[] {

@@ -142,7 +142,7 @@ export function countValues(values: string[]): CountItem[] {
 }
 
 export function getTopRoles(signals: JobSignal[], limit = 5): CountItem[] {
-  return countValues(signals.map((signal) => normalizeRoleTitle(signal.job_title)))
+  return countValues(signals.map((signal) => normalizeRoleTitle(signal.role_title_normalized ?? signal.job_title)))
     .filter((item) => item.label.length > 3)
     .slice(0, limit);
 }
@@ -239,7 +239,7 @@ export function summarizeSkillTools(signals: JobSignal[], limit = 18): SkillTool
       category: categorizeSkillTool(item.label, item.count),
       roleFamilies: getTopRoles(matching, 3).map((role) => role.label),
       companies: getTopCompanies(matching, 3).map((company) => company.label),
-      exampleRoles: matching.slice(0, 3).map((signal) => normalizeRoleTitle(signal.job_title)),
+      exampleRoles: matching.slice(0, 3).map((signal) => normalizeRoleTitle(signal.role_title_normalized ?? signal.job_title)),
     };
   });
 }
