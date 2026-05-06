@@ -16,5 +16,23 @@ Behavior:
 - uses `Dedup Key` as `job_signals.external_job_id`
 - skips rows already present in `job_signals`
 - dedupes across multiple input files in the same run
+- normalizes and attempts to resolve redirect-style Apply URLs before insert
 - writes a minimal `labor_market_enrichments` row with `validation_status = 'partial'`
 - maps rich role families to legacy `job_signals.job_family` values for SignalPulse compatibility
+
+## Repair Existing Job URLs
+
+Upgrade existing redirect-style URLs in `job_signals.job_url` to the best resolved outbound link:
+
+```powershell
+node .\scripts\repair-job-urls.mjs --dry-run
+node .\scripts\repair-job-urls.mjs
+node .\scripts\repair-job-urls.mjs --limit 500 --dry-run
+```
+
+Behavior:
+
+- scans recent `job_signals` rows
+- targets redirect-style URLs such as `to.indeed.com` and Google `/url` links
+- follows redirects when possible and stores the stronger final URL
+- preserves the original URL in `score_components.original_apply_url`

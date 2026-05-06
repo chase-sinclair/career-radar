@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
+import { normalizeJobUrl, resolveJobUrl } from './job-url-utils.mjs';
 
 function loadEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return;
@@ -108,7 +109,7 @@ function normalizeDedupKey(row) {
   const explicit = normalizeText(row['Dedup Key']);
   if (explicit) return explicit.toLowerCase();
 
-  const url = normalizeText(row['Apply URL']).toLowerCase();
+  const url = (normalizeJobUrl(row['Apply URL']) ?? '').toLowerCase();
   if (url) return url;
 
   return [
@@ -156,6 +157,7 @@ function buildSheetMetadata(row, dedupKey) {
   return {
     ingestion_source: 'claude_routine',
     dedup_key: dedupKey,
+    original_apply_url: normalizeText(row['Apply URL']) || null,
     sheet_source: normalizeText(row.Source) || null,
     sheet_role_family: normalizeText(row['Role Family']) || null,
     sheet_seniority: normalizeText(row.Seniority) || null,
@@ -177,7 +179,7 @@ function mapRow(row) {
     company_name: normalizeText(row.Company),
     job_title: normalizeText(row['Job Title']),
     raw_description: rawDescription || null,
-    job_url: normalizeText(row['Apply URL']) || null,
+    job_url: normalizeJobUrl(row['Apply URL']),
     posted_at: normalizeText(row['Date Posted']) || null,
     legacy_job_family: toLegacyJobFamily(roleFamily),
     role_family: roleFamily,
@@ -352,6 +354,7 @@ async function main() {
 
   let inserted = 0;
   for (const row of toInsert) {
+    row.job_url = await resolveJobUrl(row.job_url);
     await ensureCompany(supabase, row.company_name);
     const jobSignal = await upsertJobSignal(supabase, row);
     await upsertEnrichment(supabase, row, jobSignal.id);
