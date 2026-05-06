@@ -3,6 +3,18 @@ import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { normalizeJobUrl, resolveJobUrl } from './job-url-utils.mjs';
 
+const ALLOWED_COMPANY_TYPES = new Set([
+  'Startup',
+  'Top Tech',
+  'Bank',
+  'Consulting',
+  'Enterprise SaaS',
+  'Healthcare',
+  'Government Contractor',
+  'Other',
+  'Unknown',
+]);
+
 function loadEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return;
   const raw = fs.readFileSync(filePath, 'utf8');
@@ -105,6 +117,44 @@ function normalizeText(value) {
   return (value ?? '').trim();
 }
 
+function normalizeCompanyName(value) {
+  const trimmed = normalizeText(value).toLowerCase();
+  return trimmed && trimmed !== '<blank>' ? trimmed : null;
+}
+
+function loadCompanyTypeDictionary(repoRoot) {
+  const candidates = [
+    process.env.COMPANY_TYPE_DICTIONARY_PATH,
+    path.join(repoRoot, 'data', 'company-type-dictionary.csv'),
+    'C:\\Users\\chase\\Downloads\\company-type-dictionary.csv',
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (!fs.existsSync(candidate)) continue;
+
+    const rows = parseCsv(fs.readFileSync(candidate, 'utf8'));
+    const dictionary = new Map();
+
+    for (const row of rows) {
+      const normalized = normalizeCompanyName(row.normalized_company_name);
+      const companyType = normalizeText(row.company_type);
+      if (!normalized) continue;
+      if (!ALLOWED_COMPANY_TYPES.has(companyType)) continue;
+      dictionary.set(normalized, companyType);
+    }
+
+    return {
+      path: candidate,
+      dictionary,
+    };
+  }
+
+  return {
+    path: null,
+    dictionary: new Map(),
+  };
+}
+
 function normalizeDedupKey(row) {
   const explicit = normalizeText(row['Dedup Key']);
   if (explicit) return explicit.toLowerCase();
@@ -153,11 +203,12 @@ function buildRawDescription(row) {
   return snippet || requirements || '';
 }
 
-function buildSheetMetadata(row, dedupKey) {
+function buildSheetMetadata(row, dedupKey, companyType) {
   return {
     ingestion_source: 'claude_routine',
     dedup_key: dedupKey,
     original_apply_url: normalizeText(row['Apply URL']) || null,
+    mapped_company_type: companyType || null,
     sheet_source: normalizeText(row.Source) || null,
     sheet_role_family: normalizeText(row['Role Family']) || null,
     sheet_seniority: normalizeText(row.Seniority) || null,
@@ -168,15 +219,17 @@ function buildSheetMetadata(row, dedupKey) {
   };
 }
 
-function mapRow(row) {
+function mapRow(row, companyTypeDictionary) {
   const dedupKey = normalizeDedupKey(row);
   const roleFamily = normalizeText(row['Role Family']) || 'Other';
   const seniority = normalizeText(row.Seniority) || 'Unknown';
   const rawDescription = buildRawDescription(row);
+  const companyName = normalizeText(row.Company);
+  const companyType = companyTypeDictionary.get(normalizeCompanyName(companyName)) ?? 'Unknown';
 
   return {
     external_job_id: dedupKey,
-    company_name: normalizeText(row.Company),
+    company_name: companyName,
     job_title: normalizeText(row['Job Title']),
     raw_description: rawDescription || null,
     job_url: normalizeJobUrl(row['Apply URL']),
@@ -184,7 +237,8 @@ function mapRow(row) {
     legacy_job_family: toLegacyJobFamily(roleFamily),
     role_family: roleFamily,
     seniority,
-    score_components: buildSheetMetadata(row, dedupKey),
+    company_type: companyType,
+    score_components: buildSheetMetadata(row, dedupKey, companyType),
     market_insight: normalizeText(row['Job Snippet']) || null,
     role_title_normalized: normalizeText(row['Job Title']),
     role_cluster: roleFamily === 'Sales & GTM'
@@ -248,7 +302,7 @@ async function upsertEnrichment(supabase, mapped, jobSignalId) {
     emerging_role_score: 7,
     ai_relevance_score: 7,
     automation_relevance_score: 7,
-    company_type: 'Unknown',
+    company_type: mapped.company_type,
     industry: null,
     seniority: mapped.seniority,
     tools: [],
@@ -284,6 +338,7 @@ async function main() {
   const repoRoot = process.cwd();
   loadEnvFile(path.join(repoRoot, '.env.local'));
   loadEnvFile(path.join(repoRoot, '.env'));
+  const companyTypeConfig = loadCompanyTypeDictionary(repoRoot);
 
   const args = parseArgs(process.argv.slice(2));
   const inputPaths = Array.isArray(args.file)
@@ -306,11 +361,16 @@ async function main() {
   if (!serviceRoleKey) throw new Error('Missing env: SUPABASE_SERVICE_ROLE_KEY');
 
   const allMappedRows = [];
+  console.log(
+    companyTypeConfig.path
+      ? `Loaded ${companyTypeConfig.dictionary.size} company-type mappings from ${path.basename(companyTypeConfig.path)}`
+      : 'No company-type dictionary found. New imports will default company_type to Unknown.',
+  );
   for (const inputPath of inputPaths) {
     const csvPath = path.resolve(inputPath);
     const rows = parseCsv(fs.readFileSync(csvPath, 'utf8'));
     const mappedRows = rows
-      .map(mapRow)
+      .map((row) => mapRow(row, companyTypeConfig.dictionary))
       .filter((row) => row.external_job_id && row.company_name && row.job_title)
       .map((row) => ({ ...row, __source_file: csvPath }));
 
