@@ -152,6 +152,10 @@ function evidenceHrefFor(label: string, lens: MarketLens): string {
   return `/signals?${params.toString()}`;
 }
 
+function lensNarrativeLabel(lens: MarketLens): string {
+  return lens.id === 'all' ? 'All market' : lens.label;
+}
+
 export function aggregateMarketSignals(signals: JobSignal[], lens: MarketLens): MarketAggregation {
   const lensSignals = filterSignalsForLens(signals, lens);
   const scopedSignals = lensSignals.length > 0 ? lensSignals : signals;
@@ -224,8 +228,9 @@ export function buildWeeklyMarketBriefing(signals: JobSignal[], lens: MarketLens
 
   const roleSignal = topRoles[0] ?? 'AI-enabled role clusters';
   const toolSignal = topTools[0] ?? 'workflow automation';
-  const companySignal = topCompanies[0] ?? 'employers in this lens';
+  const companySignal = topCompanies[0] ?? 'employers in this job family';
   const companyCategory = topCompanySummaries[0]?.transformationCategory ?? 'systems modernization';
+  const lensLabel = lensNarrativeLabel(lens);
 
   return {
     lensId: lens.id,
@@ -236,7 +241,7 @@ export function buildWeeklyMarketBriefing(signals: JobSignal[], lens: MarketLens
     keyMarketSignals: [
       {
         title: `${roleSignal} is the clearest role signal`,
-        body: `${lens.label} postings point toward workers who can pair domain knowledge with implementation, automation, and software fluency.`,
+        body: `${lensLabel} postings point toward workers who can pair domain knowledge with implementation, automation, and software fluency.`,
         tone: 'primary',
         evidenceHref: evidenceHrefFor(roleSignal, lens),
       },

@@ -103,6 +103,7 @@ Current ingestion sources:
 
 - `SerpApi` via hosted n8n workflow
 - Claude connector routine writing curated rows into `Career Radar - Job Tracker`
+- Local curated CSV import via `scripts/import-curated-jobs.mjs`
 
 Current workflow state:
 
@@ -114,6 +115,25 @@ Current workflow state:
   - `labor_market_enrichments` write
 - `job_signals.job_family` still requires legacy enum mapping.
 - Claude routine output quality is stronger than SerpApi for cross-functional roles.
+
+Current local scripts:
+
+- `scripts/import-curated-jobs.mjs` - imports curated CSVs into `job_signals` and `labor_market_enrichments`
+- `scripts/repair-job-urls.mjs` - upgrades redirect-style outbound URLs
+- `scripts/apply-company-name-fixes.mjs` - updates recovered employer names by `job_signals.id`
+- `scripts/apply-company-types.mjs` - maps dictionary company types into `labor_market_enrichments.company_type`
+- `scripts/backfill-labor-market-enrichments.mjs` - creates minimal enrichment rows for legacy `job_signals`
+
+Current data status:
+
+- Curated CSV import path is active and preferred for higher-quality data.
+- Imported rows now auto-apply company types when `company-type-dictionary.csv` is available.
+- `705` legacy rows were backfilled into `labor_market_enrichments` with minimal `partial` rows (`prompt_version = backfill-v1`).
+- Recovered employer names were applied to `job_signals.company_name` where possible.
+- Unresolved intermediary/source-like rows remain as evidence rows but are excluded from company analysis.
+- Company analysis exclusions are enforced in backend summary logic (`Companies`, `Industries`, company-oriented aggregations).
+- Company type dictionary has already been applied to existing enrichment rows.
+- Some old Serp/Google Jobs rows still have weak Google wrapper `job_url` values and are not fully cleaned yet.
 
 Known future database/security work:
 
@@ -135,6 +155,7 @@ Known future database/security work:
 - Phase 9 - Weekly aggregation: aggregation utilities and market API routes.
 - Phase 8.5 - Hosted workflow validation: migration applied, community upsert node tested, manual smoke tests passed, legacy family mapping added.
 - Phase 8.6 - Claude routine source: Google Sheet/CSV curated source validated as promising secondary ingestion source.
+- Phase 8.7 - Local curated import: CSV importer, URL repair, company-name cleanup, company-type mapping, and enrichment backfill completed.
 
 Latest validation:
 
@@ -170,10 +191,7 @@ Build may change `next-env.d.ts` from `.next/dev/types/routes.d.ts` to `.next/ty
 
 ## Recommended Phase 10
 
-- Visual/demo polish after reviewing the app in browser.
-- Build `Career Radar Sheet Import` workflow for Google Sheet -> Supabase ingestion.
-- Use `Dedup Key` as `external_job_id` for curated imports.
-- Map sheet `Role Family` to legacy `job_signals.job_family` while preserving rich categories in `labor_market_enrichments`.
-- Decide whether curated imports should create minimal `partial` enrichment rows directly or run a second-pass enrichment.
-- Update Vercel deployment after final local validation.
-- Build a concise recruiter demo story around: live job data -> AI enrichment -> market lenses -> evidence-backed worker guidance.
+- Review the app in browser and polish UX/content using the cleaned dataset.
+- Improve old Serp/Google Jobs wrapper URL handling if those legacy rows still matter.
+- Optionally make future imports auto-apply company-name fixes dictionary, not just company types.
+- Continue frontend/product refinement now that the data layer is substantially cleaner.

@@ -26,7 +26,7 @@ export interface MarketLens {
 export const MARKET_LENSES: MarketLens[] = [
   {
     id: 'all',
-    label: 'All Market',
+    label: 'All Markets',
     description: 'Cross-functional view of role, skill, tool, and hiring shifts.',
     families: [],
     titleKeywords: [],

@@ -10,7 +10,7 @@ import {
   resolveMarketLensId,
   type MarketLensId,
 } from '@/lib/marketLenses';
-import { formatBriefingDate, normalizeRoleTitle } from '@/lib/marketInsights';
+import { formatBriefingDate, inferCompanySegment, normalizeRoleTitle } from '@/lib/marketInsights';
 
 type SignalsFamily = JobFamily | MarketRoleFamily | 'All';
 
@@ -37,12 +37,18 @@ function matchesSearch(signal: JobSignal, search: string): boolean {
   return haystack.includes(search.toLowerCase());
 }
 
+function matchesSegment(signal: JobSignal, segment: string): boolean {
+  if (!segment) return true;
+  return inferCompanySegment(signal) === segment;
+}
+
 export default function SignalsPage() {
   const [lensId, setLensId] = useState<MarketLensId>(DEFAULT_MARKET_LENS_ID);
   const [signals, setSignals] = useState<JobSignal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [segment, setSegment] = useState('');
   const [family, setFamily] = useState<SignalsFamily>('All');
   const [tool, setTool] = useState('All');
 
@@ -67,9 +73,9 @@ export default function SignalsPage() {
       const displayFamily = signal.market_role_family ?? signal.job_family ?? 'Other';
       const familyMatch = family === 'All' || displayFamily === family || signal.job_family === family;
       const toolMatch = tool === 'All' || (signal.tech_stack ?? []).includes(tool);
-      return familyMatch && toolMatch && matchesSearch(signal, search);
+      return familyMatch && toolMatch && matchesSearch(signal, search) && matchesSegment(signal, segment);
     })
-  ), [signals, search, family, tool]);
+  ), [signals, search, segment, family, tool]);
 
   async function fetchSignals(activeLensId: MarketLensId) {
     setLoading(true);
@@ -94,6 +100,7 @@ export default function SignalsPage() {
     const params = new URLSearchParams(window.location.search);
     setLensId(initialLens);
     setSearch(params.get('search') ?? '');
+    setSegment(params.get('segment') ?? '');
     fetchSignals(initialLens);
   }, []);
 
@@ -101,6 +108,7 @@ export default function SignalsPage() {
     setLensId(nextLensId);
     writeLensToUrl(nextLensId);
     fetchSignals(nextLensId);
+    setSegment('');
     setFamily('All');
     setTool('All');
   }
@@ -117,7 +125,7 @@ export default function SignalsPage() {
             </p>
             <div className="briefing-update">
               <span>{filteredSignals.length.toLocaleString()} visible signals</span>
-              <span>{selectedLens.label}</span>
+              <span>{segment || selectedLens.label}</span>
             </div>
           </div>
           <MarketLensSelect value={lensId} onChange={handleLensChange} />
@@ -129,7 +137,10 @@ export default function SignalsPage() {
               <span>Search evidence</span>
               <input
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setSegment('');
+                }}
                 placeholder="Company, role, tool, phrase"
               />
             </label>

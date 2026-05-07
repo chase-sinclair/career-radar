@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import CompanyTypeEmblem from '@/components/CompanyTypeEmblem';
 import MarketLensSelect from '@/components/MarketLensSelect';
 import type { JobSignal } from '@/lib/types';
 import { DEFAULT_MARKET_LENS_ID, getMarketLens, resolveMarketLensId, type MarketLensId } from '@/lib/marketLenses';
@@ -52,9 +53,9 @@ export default function IndustriesPage() {
       <div className="market-page">
         <section className="briefing-masthead">
           <div>
-            <h1>Industries</h1>
+            <h1>Market Segments</h1>
             <p>
-              Segment-level readout of how different employers signal role change through hiring,
+              Market segment readout of how different employers signal role change through hiring,
               from startups and banks to consulting firms and healthcare organizations.
             </p>
             <div className="briefing-update">
@@ -65,19 +66,24 @@ export default function IndustriesPage() {
           <MarketLensSelect value={lensId} onChange={handleLensChange} />
         </section>
 
-        <section className="segment-grid">
+        <section className="industry-card-grid">
           {loading ? (
-            <article className="insight-card">Loading industry signals...</article>
+            <article className="insight-card">Loading market segment signals...</article>
           ) : segments.length === 0 ? (
-            <article className="insight-card">No industry patterns found for this lens yet.</article>
+            <article className="insight-card">No market segment patterns found for this job family yet.</article>
           ) : segments.map((segment) => (
-            <article key={segment.segment} className="insight-card">
+            <article key={segment.segment} className="industry-card">
               <div className="insight-card-header">
                 <span>{segment.count} postings</span>
-                <Link href={`/signals?lens=${lensId}&search=${encodeURIComponent(segment.segment)}`}>Evidence</Link>
+                <Link href={`/signals?lens=${lensId}&segment=${encodeURIComponent(segment.segment)}`}>Evidence</Link>
               </div>
-              <h2>{segment.segment}</h2>
-              <p>{segment.strongestSignal}</p>
+              <div className="industry-card-heading">
+                <CompanyTypeEmblem type={segment.segment} className="appearance-icon" />
+                <div>
+                  <h2>{segment.segment}</h2>
+                  <p>{segment.strongestSignal}</p>
+                </div>
+              </div>
               <dl>
                 <div>
                   <dt>Top roles</dt>

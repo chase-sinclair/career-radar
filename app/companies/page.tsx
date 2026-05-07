@@ -69,23 +69,33 @@ export default function CompaniesPage() {
           {loading ? (
             <article className="company-signal-row">Loading company signals...</article>
           ) : companies.length === 0 ? (
-            <article className="company-signal-row">No company patterns found for this lens yet.</article>
-          ) : companies.map((company) => (
-            <article key={company.company} className="company-signal-row">
-              <div>
-                <span>{company.count} postings / latest {formatBriefingDate(company.latestSignal)}</span>
-                <h2>{company.company}</h2>
+            <article className="company-signal-row">No company patterns found for this job family yet.</article>
+          ) : (
+            <>
+              <div className="company-signal-row company-signal-header">
+                <span>Company</span>
+                <span>Strongest Signal</span>
+                <span>Top Tools / Tags</span>
+                <span>Evidence</span>
               </div>
-              <div>
-                <strong>{company.transformationCategory}</strong>
-                <p>{company.topRole}</p>
-              </div>
-              <div className="tag-list">
-                {company.topTools.map((tool) => <span key={tool}>{tool}</span>)}
-              </div>
-              <Link href={`/signals?lens=${lensId}&search=${encodeURIComponent(company.company)}`}>Evidence</Link>
-            </article>
-          ))}
+              {companies.map((company) => (
+                <article key={company.company} className="company-signal-row">
+                  <div>
+                    <span>{company.count} postings / latest {formatBriefingDate(company.latestSignal)}</span>
+                    <h2>{company.company}</h2>
+                  </div>
+                  <div>
+                    <strong>{company.transformationCategory}</strong>
+                    <p>{company.topRole}</p>
+                  </div>
+                  <div className="tag-list">
+                    {company.topTools.map((tool) => <span key={tool}>{tool}</span>)}
+                  </div>
+                  <Link href={`/signals?lens=${lensId}&search=${encodeURIComponent(company.company)}`}>Evidence</Link>
+                </article>
+              ))}
+            </>
+          )}
         </section>
       </div>
     </main>

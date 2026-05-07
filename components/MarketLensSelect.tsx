@@ -8,7 +8,7 @@ interface Props {
   label?: string;
 }
 
-export default function MarketLensSelect({ value, onChange, label = 'Lens' }: Props) {
+export default function MarketLensSelect({ value, onChange, label = 'Job Family' }: Props) {
   return (
     <label className="lens-select">
       <span>{label}</span>

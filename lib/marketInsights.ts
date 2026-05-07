@@ -74,17 +74,41 @@ const ROLE_STOP_WORDS = [
   'senior',
   'sr.',
   'sr',
-  'lead',
   'principal',
-  'manager',
   'director',
   'associate',
-  'specialist',
-  'consultant',
-  'analyst',
   'remote',
   'hybrid',
+  'onsite',
+  'fulltime',
+  'full-time',
+  'contract',
+  'contractor',
+  'temporary',
+  'temp',
 ];
+
+const BRAND_CASES: Record<string, string> = {
+  ai: 'AI',
+  api: 'API',
+  apis: 'APIs',
+  bi: 'BI',
+  crm: 'CRM',
+  dbt: 'dbt',
+  erp: 'ERP',
+  'fp&a': 'FP&A',
+  gtm: 'GTM',
+  iam: 'IAM',
+  llm: 'LLM',
+  llms: 'LLMs',
+  ml: 'ML',
+  netsuite: 'NetSuite',
+  revops: 'RevOps',
+  salesforce: 'Salesforce',
+  sap: 'SAP',
+  sql: 'SQL',
+  workday: 'Workday',
+};
 
 const COMPANY_ANALYSIS_EXCLUSIONS = new Set([
   'jobs via dice',
@@ -130,6 +154,10 @@ const LESS_DIFFERENTIATING_BY_LENS: Record<string, string[]> = {
   'consulting-strategy': ['Slide strategy without implementation', 'Tool selection without workflow design', 'Generic transformation language', 'Manual implementation tracking'],
 };
 
+function lensNarrativeLabel(lens: MarketLens): string {
+  return lens.id === 'all' ? 'All market' : lens.label;
+}
+
 export function getLessDifferentiatingSignals(lens: MarketLens): string[] {
   return LESS_DIFFERENTIATING_BY_LENS[lens.id] ?? LESS_DIFFERENTIATING_BY_LENS.all;
 }
@@ -138,15 +166,53 @@ function titleCase(value: string): string {
   return value
     .split(' ')
     .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .map((word) => {
+      const normalized = word.toLowerCase();
+      return BRAND_CASES[normalized] ?? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
     .join(' ');
 }
 
+function knownRoleTitle(title: string): string | null {
+  const lower = title.toLowerCase();
+  const has = (pattern: RegExp) => pattern.test(lower);
+
+  if (has(/\benterprise resources? planning\b/) && has(/\b(project|program)\s+manager\b/)) return 'ERP Project Manager';
+  if (has(/\benterprise resources? planning\b/)) return 'ERP Specialist';
+  if (has(/\berp\b/) && has(/\b(project|program)\s+manager\b|\bimplementation\b/)) return 'ERP Project Manager';
+  if (has(/\berp\b/) && has(/\bsystems?\s+manager\b|\bsystem\s+manager\b/)) return 'ERP Systems Manager';
+  if (has(/\bnetsuite\b/) && has(/\b(project|implementation|implementations?)\b/)) return 'NetSuite Implementation Lead';
+  if (has(/\bnetsuite\b/) && has(/\b(business|systems?)\s+analyst\b/)) return 'NetSuite Business Analyst';
+  if (has(/\bsalesforce\b/) && has(/\bdeveloper|engineer|programmer\b/)) return 'Salesforce Developer';
+  if (has(/\bsalesforce\b/) && has(/\badministrator|admin\b/)) return 'Salesforce Administrator';
+  if (has(/\bsalesforce\b/) && has(/\b(project|program)\s+manager\b/)) return 'Salesforce Project Manager';
+  if (has(/\bsalesforce\b/) && has(/\bconsultant|bsa|business\s+systems?\s+analyst\b/)) return 'Salesforce Consultant';
+  if (has(/\bworkday\b/) && has(/\bconsultant|implementation\b/)) return 'Workday Implementation Consultant';
+  if (has(/\bdata\s+engineer\b/)) return 'Data Engineer';
+  if (has(/\bdata\s+scientist\b/)) return has(/\bai|generative|genai|llm|machine learning\b/) ? 'AI Data Scientist' : 'Data Scientist';
+  if (has(/\bai\s+governance\b|\bmodel\s+risk\b/)) return 'AI Governance Analyst';
+  if (has(/\bllm\b/) && has(/\beval|evaluation|quality|reliability\b/)) return 'LLM Evaluation Specialist';
+  if (has(/\bforward\s+deployed\b/)) return has(/\bai\b/) ? 'Forward Deployed AI Engineer' : 'Forward Deployed Engineer';
+  if (has(/\bgtm\b/) && has(/\bengineer|systems?\b/)) return 'GTM Systems Engineer';
+  if (has(/\brevops\b|\brevenue operations\b/)) return has(/\bautomation|systems?|operations\b/) ? 'RevOps Automation Specialist' : 'Revenue Operations Analyst';
+  if (has(/\bfp&a\b/) && has(/\bautomation|systems?|analyst\b/)) return 'FP&A Automation Analyst';
+  if (has(/\bfinance\b/) && has(/\btransformation|systems?|automation\b/)) return 'Finance Transformation Analyst';
+  if (has(/\bmarketing operations\b/) && has(/\bautomation|engineer|platform\b/)) return 'Marketing Operations Automation Specialist';
+  if (has(/\bhr\b|\bpeople operations\b/) && has(/\bautomation|systems?|hris\b/)) return 'HR Operations Automation Specialist';
+  if (has(/\bworkflow\b/) && has(/\bautomation\b/)) return 'Workflow Automation Specialist';
+
+  return null;
+}
+
 export function normalizeRoleTitle(title: string): string {
+  const matchedTitle = knownRoleTitle(title);
+  if (matchedTitle) return matchedTitle;
+
   const cleaned = title
     .replace(/\([^)]*\)/g, ' ')
     .replace(/\[[^\]]*\]/g, ' ')
-    .replace(/[|,/-].*$/g, ' ')
+    .replace(/[|,].*$/g, ' ')
+    .replace(/\s+-\s+.*$/g, ' ')
     .replace(/\b(remote|hybrid|onsite|full.?time|contract)\b/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -155,7 +221,10 @@ export function normalizeRoleTitle(title: string): string {
     .split(' ')
     .filter((word) => !ROLE_STOP_WORDS.includes(word.toLowerCase()));
 
-  return titleCase(words.slice(0, 4).join(' ') || cleaned);
+  const normalized = titleCase(words.slice(0, 5).join(' ') || cleaned);
+  const genericTitles = new Set(['ERP Project', 'Project', 'Salesforce', 'NetSuite Implementation', 'Netsuite Implementation']);
+
+  return genericTitles.has(normalized) ? titleCase(cleaned) : normalized;
 }
 
 export function countValues(values: string[]): CountItem[] {
@@ -216,6 +285,12 @@ export function summarizeCompanies(signals: JobSignal[], limit = 10): CompanySig
 
 function inferEvolvedFrom(role: string): string {
   const lower = role.toLowerCase();
+  if (lower.includes('workday')) return 'HRIS / Payroll Analyst';
+  if (lower.includes('netsuite')) return 'Finance Systems Analyst';
+  if (lower.includes('salesforce')) return 'Sales Operations';
+  if (lower.includes('sap') || lower.includes('oracle')) return 'Finance Systems Analyst';
+  if (lower.includes('implementation consultant')) return 'Business Systems Analyst';
+  if (lower.includes('implementation lead')) return 'Systems Implementation Lead';
   if (lower.includes('data') || lower.includes('analytics')) return 'Data Analyst';
   if (lower.includes('finance') || lower.includes('erp') || lower.includes('fp&a')) return 'Finance Analyst';
   if (lower.includes('sales') || lower.includes('revenue') || lower.includes('gtm')) return 'Sales Operations';
@@ -282,7 +357,7 @@ export function summarizeSkillTools(signals: JobSignal[], limit = 18): SkillTool
   });
 }
 
-function inferCompanySegment(signal: JobSignal): string {
+export function inferCompanySegment(signal: JobSignal): string {
   const text = `${signal.company_name} ${signal.job_title} ${signal.raw_description ?? ''}`.toLowerCase();
   if (/(jpmorgan|chase|citi|goldman|morgan stanley|bank|wells fargo|capital one|bny|ubs)/.test(text)) return 'Banks';
   if (/(deloitte|accenture|pwc|kpmg|ey|bain|bcg|mckinsey|consulting)/.test(text)) return 'Consulting';
@@ -293,14 +368,45 @@ function inferCompanySegment(signal: JobSignal): string {
   return 'Startups';
 }
 
+const TRANSFORMATION_CATEGORIES = [
+  {
+    label: 'Governance and risk control',
+    patterns: [/risk/g, /governance/g, /compliance/g, /audit/g, /security/g, /privacy/g, /model risk/g],
+  },
+  {
+    label: 'Revenue systems automation',
+    patterns: [/salesforce/g, /hubspot/g, /\bcrm\b/g, /revenue/g, /\bgtm\b/g, /sales operations/g, /\brevops\b/g],
+  },
+  {
+    label: 'Finance systems modernization',
+    patterns: [/netsuite/g, /workday/g, /\bsap\b/g, /oracle/g, /finance/g, /\berp\b/g, /fp&a/g, /accounting/g],
+  },
+  {
+    label: 'Data and analytics modernization',
+    patterns: [/data/g, /analytics/g, /snowflake/g, /\bdbt\b/g, /databricks/g, /\bsql\b/g, /power bi/g, /tableau/g],
+  },
+  {
+    label: 'AI workflow automation',
+    patterns: [/\bai\b/g, /\bllm\b/g, /openai/g, /automation/g, /workflow/g, /agentic/g, /\brag\b/g],
+  },
+] as const;
+
+function scorePattern(text: string, pattern: RegExp): number {
+  return text.match(pattern)?.length ?? 0;
+}
+
 function inferTransformationCategory(signals: JobSignal[]): string {
-  const text = signals.map((signal) => `${signal.job_title} ${(signal.tech_stack ?? []).join(' ')}`).join(' ').toLowerCase();
-  if (/(risk|governance|compliance|audit|security|privacy)/.test(text)) return 'Governance and risk control';
-  if (/(salesforce|hubspot|crm|revenue|gtm|sales)/.test(text)) return 'Revenue systems automation';
-  if (/(netsuite|workday|sap|oracle|finance|erp|fp&a)/.test(text)) return 'Finance systems modernization';
-  if (/(data|analytics|snowflake|dbt|databricks|sql|power bi|tableau)/.test(text)) return 'Data and analytics modernization';
-  if (/(openai|ai|llm|automation|workflow|agent)/.test(text)) return 'AI workflow automation';
-  return 'Operating model modernization';
+  const text = signals
+    .map((signal) => `${signal.job_title} ${(signal.tech_stack ?? []).join(' ')} ${signal.raw_description ?? ''}`)
+    .join(' ')
+    .toLowerCase();
+
+  const scored = TRANSFORMATION_CATEGORIES.map((category) => ({
+    label: category.label,
+    score: category.patterns.reduce((sum, pattern) => sum + scorePattern(text, pattern), 0),
+  })).sort((a, b) => b.score - a.score);
+
+  return scored[0]?.score ? scored[0].label : 'Operating model modernization';
 }
 
 export function summarizeIndustrySegments(signals: JobSignal[]): IndustrySegmentSummary[] {
@@ -372,12 +478,13 @@ export function buildMarketBriefing(signals: JobSignal[], lens: MarketLens): Mar
   const skills = getTopTags(scopedSignals).map((item) => item.label);
   const companies = getTopCompanies(scopedSignals).map((item) => item.label);
   const lessDifferentiating = LESS_DIFFERENTIATING_BY_LENS[lens.id] ?? LESS_DIFFERENTIATING_BY_LENS.all;
+  const lensLabel = lensNarrativeLabel(lens);
   const updatedAt = scopedSignals
     .map((signal) => signal.created_at)
     .sort((a, b) => b.localeCompare(a))[0] ?? null;
 
   const executiveSummary =
-    `${lens.label} signals show demand moving toward workers who can combine domain knowledge with tools, systems, and automation. ` +
+    `${lensLabel} signals show demand moving toward workers who can combine domain knowledge with tools, systems, and automation. ` +
     `${roles[0] ?? 'Emerging role clusters'} and ${roles[1] ?? 'systems-oriented roles'} are appearing as practical examples, while ` +
     `${skills[0] ?? 'workflow automation'} and ${skills[1] ?? 'AI fluency'} are becoming part of the expected toolkit.`;
 
@@ -394,7 +501,7 @@ export function buildMarketBriefing(signals: JobSignal[], lens: MarketLens): Mar
     losingDifferentiation: lessDifferentiating.slice(0, 4),
     industryReadout: inferIndustryReadout(scopedSignals),
     workerMeaning:
-      `${lens.label} workers should treat AI as a role-expansion signal. The strongest pattern is not replacement; it is the market rewarding people who pair field knowledge with modern tools, automation, and systems judgment.`,
+      `${lensLabel} workers should treat AI as a role-expansion signal. The strongest pattern is not replacement; it is the market rewarding people who pair field knowledge with modern tools, automation, and systems judgment.`,
   };
 }
 

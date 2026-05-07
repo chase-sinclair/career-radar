@@ -8,7 +8,7 @@ const LINKS = [
   { href: '/signals',        label: 'Signals'                },
   { href: '/emerging-roles', label: 'Emerging Roles'         },
   { href: '/skills-tools',   label: 'Rising Skills & Tools'  },
-  { href: '/industries',     label: 'Industries'             },
+  { href: '/industries',     label: 'Market Segments'        },
   { href: '/companies',      label: 'Companies'              },
   { href: '/methodology',    label: 'About / Methodology'    },
 ];

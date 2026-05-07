@@ -15,7 +15,7 @@ const STEPS = [
   },
   {
     title: 'Interpret',
-    body: 'Career Radar currently uses deterministic app-level aggregation to group postings by lens, role cluster, skill/tool, company, and industry segment.',
+    body: 'Career Radar currently uses deterministic app-level aggregation to group postings by job family, role cluster, skill/tool, company, and market segment.',
   },
   {
     title: 'Verify',
@@ -25,7 +25,7 @@ const STEPS = [
 
 const LIMITATIONS = [
   'Current insights are deterministic and approximate until the new enrichment schema is implemented.',
-  'Company segment classification is inferred from names and posting text, not from a dedicated enrichment provider.',
+  'Market segment classification is inferred from names and posting text, not from a dedicated enrichment provider.',
   'Losing differentiation alone is an inference, not a direct claim from any single job posting.',
   'The inherited workflow still uses the old SignalPulse prompt until the pipeline is reframed.',
 ];
@@ -75,7 +75,7 @@ export default function MethodologyPage() {
               <h2>Inferred Interpretation</h2>
             </div>
             <p>
-              Emerging roles, role evolution, industry readouts, and losing-differentiation-alone signals
+              Emerging roles, role evolution, market segment readouts, and losing-differentiation-alone signals
               are app-level interpretations that should link back to source postings.
             </p>
           </article>

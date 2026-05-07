@@ -13,6 +13,26 @@ import { buildWeeklyMarketBriefing } from '@/lib/marketAggregations';
 import { formatBriefingDate } from '@/lib/marketInsights';
 import MarketLensSelect from '@/components/MarketLensSelect';
 
+function splitSignalTitle(title: string) {
+  const markers = [
+    ' is the clearest role signal',
+    ' is moving through the market',
+    ' points to ',
+  ];
+
+  for (const marker of markers) {
+    const index = title.indexOf(marker);
+    if (index > 0) {
+      return {
+        highlight: title.slice(0, index),
+        remainder: title.slice(index),
+      };
+    }
+  }
+
+  return { highlight: title, remainder: '' };
+}
+
 function readLensFromUrl(): MarketLensId {
   if (typeof window === 'undefined') return DEFAULT_MARKET_LENS_ID;
   return resolveMarketLensId(new URLSearchParams(window.location.search).get('lens'));
@@ -119,18 +139,24 @@ export default function MarketBriefingPage() {
 
           <div className="briefing-callouts">
             <div>
-              <span className="callout-dot" />
-              <strong>Emerging:</strong>
+              <div className="briefing-callout-label">
+                <span className="callout-dot" />
+                <strong>Emerging:</strong>
+              </div>
               <p>{briefing.emergingRoles.slice(0, 2).map((role) => role.role).join(', ') || 'Role clusters still forming'}</p>
             </div>
             <div>
-              <span className="callout-arrow">Up</span>
-              <strong>Rising:</strong>
+              <div className="briefing-callout-label">
+                <span className="callout-arrow">Up</span>
+                <strong>Rising:</strong>
+              </div>
               <p>{briefing.risingSkillsTools.slice(0, 3).map((skill) => skill.name).join(', ') || 'Tool demand still forming'}</p>
             </div>
             <div>
-              <span className="callout-eye">Watch</span>
-              <strong>Watch:</strong>
+              <div className="briefing-callout-label">
+                <span className="callout-eye">Watch</span>
+                <strong>Watch:</strong>
+              </div>
               <p>{briefing.losingDifferentiationAlone.slice(0, 1).join(', ') || 'No watch signal yet'}</p>
             </div>
           </div>
@@ -142,21 +168,27 @@ export default function MarketBriefingPage() {
           </div>
 
           <div className="signal-layout">
-            {briefing.keyMarketSignals.map((signal, index) => (
-              <article
-                key={signal.title}
-                className={`signal-card signal-${signal.tone}${index === 0 ? ' is-large' : ''}`}
-              >
-                <div className="signal-icon" aria-hidden="true">
-                  {index === 0 ? 'AI' : index === 1 ? 'CO' : 'SK'}
-                </div>
-                <div>
-                  <h3>{signal.title}</h3>
+            {briefing.keyMarketSignals.map((signal, index) => {
+              const titleParts = splitSignalTitle(signal.title);
+              return (
+                <article
+                  key={signal.title}
+                  className={`signal-card signal-${signal.tone}${index === 0 ? ' is-large' : ''}`}
+                >
+                  <div className="signal-icon" aria-hidden="true">
+                    {index === 0 ? 'AI' : index === 1 ? 'CO' : 'SK'}
+                  </div>
+                  <div>
+                    <h3>
+                      <span className="signal-highlight">{titleParts.highlight}</span>
+                      {titleParts.remainder}
+                    </h3>
                   <p>{signal.body}</p>
                   <Link href={signal.evidenceHref}>View evidence</Link>
-                </div>
-              </article>
-            ))}
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </section>
 
@@ -191,10 +223,10 @@ export default function MarketBriefingPage() {
           </div>
         </section>
 
-        <section className="bottom-readout" aria-label="Industry and worker readout">
+        <section className="bottom-readout" aria-label="Market segment and worker readout">
           <article>
             <div className="section-heading">
-              <h2>Industry Readout</h2>
+              <h2>Market Segment Readout</h2>
             </div>
             <div className="industry-table">
               <div className="industry-row is-header">
